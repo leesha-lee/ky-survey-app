@@ -30,7 +30,7 @@ export default function Nav() {
 
   return (
     <nav>
-      <h1>Survey App</h1>
+      <h1>KY UX Survey App</h1>
       <Link to="/">
         <button className={isActive('/') && !isActive('/create') && !isActive('/compare') ? 'active' : ''}>
           설문 목록

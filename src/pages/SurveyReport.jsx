@@ -18,14 +18,25 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Le
 
 const COLORS = ['#4361ee', '#2ec4b6', '#ff6b6b', '#ffd166', '#06d6a0', '#118ab2', '#8338ec', '#fb5607', '#3a86a7', '#e63946'];
 
+function ImageLightbox({ src, alt, onClose }) {
+  return (
+    <div className="lightbox-overlay" onClick={onClose}>
+      <button className="lightbox-close" onClick={onClose}>&times;</button>
+      <img src={src} alt={alt} className="lightbox-img" onClick={e => e.stopPropagation()} />
+    </div>
+  );
+}
+
 function MediaDisplay({ mediaArr }) {
+  const [lightbox, setLightbox] = useState(null);
   if (!mediaArr || !mediaArr.length) return null;
   const items = mediaArr.filter(m => m.url);
   if (!items.length) return null;
   return (
     <div style={{ marginBottom: 14 }}>
+      {lightbox && <ImageLightbox src={lightbox.src} alt={lightbox.alt} onClose={() => setLightbox(null)} />}
       {items.map((m, i) => {
-        if (m.type === 'image') return <div className="media-preview" key={i}><img src={m.url} alt={m.alt || ''} /></div>;
+        if (m.type === 'image') return <div className="media-preview" key={i}><img src={m.url} alt={m.alt || ''} style={{ cursor: 'zoom-in' }} onClick={() => setLightbox({ src: m.url, alt: m.alt || '' })} /></div>;
         if (m.type === 'video') return <div className="media-preview" key={i}><video src={m.url} controls></video></div>;
         if (m.type === 'youtube') { const e = getYoutubeEmbedUrl(m.url); return e ? <div className="media-preview" key={i}><iframe src={e} allowFullScreen></iframe></div> : null; }
         if (m.type === 'link') return <div className="media-preview" key={i}><a href={m.url} target="_blank" rel="noopener noreferrer" className="link-card">&#128279; {m.label || m.url}</a></div>;
