@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { getCatStyle } from '../config/categories';
 
-export default function SurveyCard({ survey, responseCount, currentUser, isAdmin, onToggleClose, onDelete, onEdit }) {
+export default function SurveyCard({ survey, responseCount, currentUser, isAdmin, onToggleClose, onDelete, onEdit, onDuplicate }) {
   const s = survey;
   const catStyle = getCatStyle(s.category);
 
@@ -54,6 +54,9 @@ export default function SurveyCard({ survey, responseCount, currentUser, isAdmin
             </button>
             <button className="btn btn-outline btn-sm" onClick={() => onEdit(s.id)}>
               수정
+            </button>
+            <button className="btn btn-outline btn-sm" onClick={() => onDuplicate(s.id)}>
+              복제
             </button>
             <button className="btn btn-danger btn-sm" onClick={() => onDelete(s.id)}>
               삭제

@@ -39,6 +39,20 @@ export default function SurveyList() {
     navigate(`/edit/${id}`);
   }, [navigate]);
 
+  const handleDuplicate = useCallback(async (id) => {
+    const d = await loadData();
+    const original = d.surveys.find(x => x.id === id);
+    if (!original) return;
+    const copy = JSON.parse(JSON.stringify(original));
+    copy.id = Date.now();
+    copy.title = original.title + ' (복사)';
+    copy.closed = false;
+    copy.createdAt = new Date().toISOString().slice(0, 10);
+    d.surveys.push(copy);
+    await saveData(d);
+    await refresh();
+  }, [refresh]);
+
   const surveys = data.surveys || [];
   const filtered = categoryFilter
     ? surveys.filter(s => (s.category || '기타') === categoryFilter)
@@ -79,6 +93,7 @@ export default function SurveyList() {
               onToggleClose={handleToggleClose}
               onDelete={handleDelete}
               onEdit={handleEdit}
+              onDuplicate={handleDuplicate}
             />
           ))
         )}
