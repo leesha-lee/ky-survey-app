@@ -12,7 +12,7 @@ export async function seedSampleData() {
   // ── S1: SPI 검사기 UI 사용성 평가 (진행중) ──
   const sid1 = 'sample_' + uid();
   const g1a = 'grp_' + uid(), g1b = 'grp_' + uid(), g1c = 'grp_' + uid();
-  const s1 = { id: sid1, title: 'SPI 검사기 UI 사용성 평가', category: '제품평가', description: 'SPI 검사기 소프트웨어의 UI 사용성을 평가하여 차기 버전 개선 방향을 도출하기 위한 설문입니다. 실제 검사기를 사용하시는 분들의 솔직한 의견을 부탁드립니다.', createdAt: '2026. 3. 10.', closed: false,
+  const s1 = { id: sid1, title: 'SPI 검사기 UI 사용성 평가', category: 'RtoS GUI', description: 'SPI 검사기 소프트웨어의 UI 사용성을 평가하여 차기 버전 개선 방향을 도출하기 위한 설문입니다. 실제 검사기를 사용하시는 분들의 솔직한 의견을 부탁드립니다.', createdAt: '2026. 3. 10.', closed: false,
     questionGroups: [{ id: g1a, name: 'UI 직관성', color: '#4361ee' }, { id: g1b, name: '작업 효율', color: '#2ec4b6' }, { id: g1c, name: '종합 의견', color: '#8338ec' }],
     questions: [
       { id: uid(), type: 'radio', title: 'SPI 검사기를 얼마나 자주 사용하십니까?', required: true, options: ['매일 사용', '주 2~3회', '주 1회', '월 1~2회', '거의 사용하지 않음'], media: [], group: '' },
@@ -48,7 +48,7 @@ export async function seedSampleData() {
   // ── S3: 사내 업무 툴 UX 만족도 조사 ──
   const sid3 = 'sample3_' + uid();
   const g3a = 'grp_' + uid(), g3b = 'grp_' + uid();
-  const s3 = { id: sid3, title: '사내 업무 툴 UX 만족도 조사', category: '업무프로세스', description: '현재 사용 중인 사내 업무 툴(KPO, JIRA, Confluence 등)의 UX 만족도를 조사하여 개선 우선순위를 도출합니다.', createdAt: '2026. 2. 20.', closed: true,
+  const s3 = { id: sid3, title: '사내 업무 툴 UX 만족도 조사', category: 'KPO', description: '현재 사용 중인 사내 업무 툴(KPO, JIRA, Confluence 등)의 UX 만족도를 조사하여 개선 우선순위를 도출합니다.', createdAt: '2026. 2. 20.', closed: true,
     questionGroups: [{ id: g3a, name: '툴별 만족도', color: '#118ab2' }, { id: g3b, name: '개선 방향', color: '#06d6a0' }],
     questions: [
       { id: uid(), type: 'scale', title: 'KPO(사내 포털)의 사용 편의성에 만족하십니까?', required: true, scaleMin: 1, scaleMax: 5, labelMin: '매우 불만족', labelMax: '매우 만족', media: [], group: g3a },
@@ -69,7 +69,7 @@ export async function seedSampleData() {
 
   // ── S4: 신규 디자인 시스템 컴포넌트 피드백 ──
   const sid4 = 'sample4_' + uid();
-  const s4 = { id: sid4, title: '신규 디자인 시스템 컴포넌트 피드백', category: '제품평가', description: 'UX/UI팀에서 개발 중인 신규 디자인 시스템 컴포넌트에 대한 개발자 피드백을 수집합니다. 프로토타입을 사용해 보신 후 응답해 주세요.', createdAt: '2026. 3. 15.', closed: false, questionGroups: [],
+  const s4 = { id: sid4, title: '신규 디자인 시스템 컴포넌트 피드백', category: 'KSMART', description: 'UX/UI팀에서 개발 중인 신규 디자인 시스템 컴포넌트에 대한 개발자 피드백을 수집합니다. 프로토타입을 사용해 보신 후 응답해 주세요.', createdAt: '2026. 3. 15.', closed: false, questionGroups: [],
     questions: [
       { id: uid(), type: 'scale', title: '새 디자인 시스템의 컴포넌트가 구현하기 쉽다고 느끼십니까?', required: true, scaleMin: 1, scaleMax: 5, labelMin: '매우 어려움', labelMax: '매우 쉬움', media: [], group: '' },
       { id: uid(), type: 'scale', title: '기존 디자인 대비 시각적 완성도가 개선되었다고 느끼십니까?', required: true, scaleMin: 1, scaleMax: 5, labelMin: '전혀 아님', labelMax: '매우 개선됨', media: [], group: '' },

@@ -113,7 +113,7 @@ textarea { resize: vertical; min-height: 60px; }
 .group-add-row { display: flex; gap: 8px; }
 .group-add-row input { flex: 1; margin-bottom: 0; padding: 7px 12px; font-size: 13px; }
 .group-add-row button { flex-shrink: 0; }
-.q-item .q-group-badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; color: #fff; margin-left: 8px; vertical-align: middle; }
+.q-group-badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; color: #FFFFFF; border: none; margin-right: 6px; vertical-align: middle; }
 .q-item .q-group-select { font-size: 13px; padding: 4px 10px; border-radius: 6px; border: 1.5px solid #d1d5db; background: #fff; margin-bottom: 10px; }
 .take-group-header { background: linear-gradient(135deg, #4361ee11, #2ec4b611); border-left: 4px solid #4361ee; padding: 14px 18px; border-radius: 0 10px 10px 0; margin-bottom: 16px; margin-top: 28px; }
 .take-group-header:first-child { margin-top: 0; }

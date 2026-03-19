@@ -6,6 +6,7 @@ import { loadData, saveData } from '../lib/db';
 import { deleteSurveyBlobs } from '../lib/blob';
 import CategoryFilter from '../components/CategoryFilter';
 import SurveyCard from '../components/SurveyCard';
+import { isAdmin } from '../config/roles';
 
 export default function SurveyList() {
   const { data, refresh } = useDB();
@@ -48,9 +49,11 @@ export default function SurveyList() {
       <div className="card">
         <div className="flex-between">
           <h2>설문 목록</h2>
-          <button className="btn btn-primary" onClick={() => navigate('/create')}>
-            + 새 설문 만들기
-          </button>
+          {isAdmin(currentUser) && (
+            <button className="btn btn-primary" onClick={() => navigate('/create')}>
+              + 새 설문 만들기
+            </button>
+          )}
         </div>
         <CategoryFilter
           surveys={surveys}
@@ -72,6 +75,7 @@ export default function SurveyList() {
               survey={{ ...s, _responses: data.responses[s.id] || [] }}
               responseCount={(data.responses[s.id] || []).length}
               currentUser={currentUser}
+              isAdmin={isAdmin(currentUser)}
               onToggleClose={handleToggleClose}
               onDelete={handleDelete}
               onEdit={handleEdit}

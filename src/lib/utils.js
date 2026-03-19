@@ -47,15 +47,18 @@ export function getYoutubeEmbedUrl(url) {
 
 export function groupQuestions(qs, groups) {
   if (!groups || !groups.length) return [{ group: null, questions: qs.map((q, i) => ({ q, qi: i })) }];
+  const groupMap = {};
+  groups.forEach(g => { groupMap[g.id] = g; });
   const result = [];
-  const grouped = {};
-  const ungrouped = [];
-  groups.forEach(g => grouped[g.id] = []);
   qs.forEach((q, qi) => {
-    if (q.group && grouped[q.group]) grouped[q.group].push({ q, qi });
-    else ungrouped.push({ q, qi });
+    const gid = q.group && groupMap[q.group] ? q.group : null;
+    const lastSection = result[result.length - 1];
+    const lastGroupId = lastSection ? (lastSection.group ? lastSection.group.id : null) : undefined;
+    if (!lastSection || lastGroupId !== gid) {
+      result.push({ group: gid ? groupMap[gid] : null, questions: [{ q, qi }] });
+    } else {
+      lastSection.questions.push({ q, qi });
+    }
   });
-  groups.forEach(g => { if (grouped[g.id].length) result.push({ group: g, questions: grouped[g.id] }); });
-  if (ungrouped.length) result.push({ group: null, questions: ungrouped });
   return result;
 }

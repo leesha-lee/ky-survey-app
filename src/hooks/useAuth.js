@@ -1,31 +1,37 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, createContext, useContext, createElement } from 'react';
 import { PublicClientApplication } from '@azure/msal-browser';
 import { msalConfig, loginRequest } from '../config/msal';
 
 let msalInstance = null;
-try {
-  msalInstance = new PublicClientApplication(msalConfig);
-} catch (e) {
-  console.warn('MSAL init failed:', e);
-}
+let msalReady = false;
+
+const initPromise = (async () => {
+  try {
+    msalInstance = new PublicClientApplication(msalConfig);
+    await msalInstance.initialize();
+    msalReady = true;
+  } catch (e) {
+    console.warn('MSAL init failed:', e);
+  }
+})();
 
 export { loginRequest };
 
-export function useAuth() {
-  const [currentUser, setCurrentUser] = useState(null);
+const AuthContext = createContext(null);
 
-  // Restore from sessionStorage on mount
-  useEffect(() => {
+export function AuthProvider({ children }) {
+  const [currentUser, setCurrentUser] = useState(() => {
     const saved = sessionStorage.getItem('msal_user');
     if (saved) {
-      try {
-        setCurrentUser(JSON.parse(saved));
-      } catch (e) { /* ignore */ }
+      try { return JSON.parse(saved); } catch (e) { /* ignore */ }
     }
-    // Try silent login
-    if (msalInstance) {
-      trySilentLogin();
-    }
+    return null;
+  });
+
+  useEffect(() => {
+    initPromise.then(() => {
+      if (msalReady) trySilentLogin();
+    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -73,7 +79,8 @@ export function useAuth() {
   }
 
   const login = useCallback(async () => {
-    if (!msalInstance) {
+    await initPromise;
+    if (!msalReady) {
       alert('Microsoft 로그인을 사용하려면 Azure AD Client ID를 설정해야 합니다.');
       return null;
     }
@@ -92,7 +99,8 @@ export function useAuth() {
   }, []);
 
   const logout = useCallback(async () => {
-    if (!msalInstance) return;
+    await initPromise;
+    if (!msalReady) return;
     setCurrentUser(null);
     sessionStorage.removeItem('msal_user');
     try {
@@ -102,5 +110,11 @@ export function useAuth() {
     }
   }, []);
 
-  return { currentUser, login, logout, msalInstance };
+  return createElement(AuthContext.Provider, { value: { currentUser, login, logout, msalInstance } }, children);
+}
+
+export function useAuth() {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+  return ctx;
 }

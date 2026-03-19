@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { loadData, saveData } from '../lib/db';
 import { restoreBlobs } from '../lib/blob';
-import { esc, getYoutubeEmbedUrl, groupQuestions } from '../lib/utils';
+import { esc, getYoutubeEmbedUrl } from '../lib/utils';
 
 function MsIcon() {
   return (
@@ -150,7 +150,8 @@ export default function SurveyTake() {
     );
   }
 
-  const sections = groupQuestions(questions, survey.questionGroups);
+  const groupMap = {};
+  (survey.questionGroups || []).forEach(g => { groupMap[g.id] = g; });
 
   return (
     <div className="page active">
@@ -164,20 +165,15 @@ export default function SurveyTake() {
           </span>
         </div>
 
-        {sections.map((sec, si) => (
-          <div key={si}>
-            {sec.group && (
-              <div className="take-group-header" style={si === 0 ? { marginTop: 0 } : undefined}>
-                <h3>{sec.group.name}</h3>
-                <p>{sec.questions.length}개 항목</p>
+        {questions.map((q, qi) => {
+          const grp = q.group && groupMap[q.group];
+          return (
+            <div className="take-q" key={qi}>
+              <div className="q-title">
+                {grp && <span className="q-group-badge" style={{ background: grp.color }}>{grp.name}</span>}
+                Q{qi + 1}. {q.title}
+                {q.required && <span className="required"> *</span>}
               </div>
-            )}
-            {sec.questions.map(({ q, qi }) => (
-              <div className="take-q" key={qi}>
-                <div className="q-title">
-                  Q{qi + 1}. {q.title}
-                  {q.required && <span className="required"> *</span>}
-                </div>
                 <MediaDisplay mediaArr={q.media} />
 
                 {q.type === 'radio' && (
@@ -246,10 +242,9 @@ export default function SurveyTake() {
                     onChange={(e) => setAnswer(qi, e.target.value)}
                   />
                 )}
-              </div>
-            ))}
-          </div>
-        ))}
+            </div>
+          );
+        })}
 
         <div style={{ textAlign: 'right', marginTop: 20 }}>
           <button className="btn btn-secondary" onClick={() => navigate('/')} style={{ marginRight: 8 }}>돌아가기</button>

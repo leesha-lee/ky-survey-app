@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { isAdmin } from '../config/roles';
 
 function MsIcon() {
   return (
@@ -35,16 +36,20 @@ export default function Nav() {
           설문 목록
         </button>
       </Link>
-      <Link to="/create">
-        <button className={isActive('/create') || isActive('/edit') ? 'active' : ''}>
-          설문 만들기
-        </button>
-      </Link>
-      <Link to="/compare">
-        <button className={isActive('/compare') ? 'active' : ''}>
-          결과 비교
-        </button>
-      </Link>
+      {isAdmin(currentUser) && (
+        <Link to="/create">
+          <button className={isActive('/create') || isActive('/edit') ? 'active' : ''}>
+            설문 만들기
+          </button>
+        </Link>
+      )}
+      {isAdmin(currentUser) && (
+        <Link to="/compare">
+          <button className={isActive('/compare') ? 'active' : ''}>
+            결과 비교
+          </button>
+        </Link>
+      )}
       <div className="auth-area">
         {currentUser ? (
           <>

@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { getCatStyle } from '../config/categories';
 
-export default function SurveyCard({ survey, responseCount, currentUser, onToggleClose, onDelete, onEdit }) {
+export default function SurveyCard({ survey, responseCount, currentUser, isAdmin, onToggleClose, onDelete, onEdit }) {
   const s = survey;
   const catStyle = getCatStyle(s.category);
 
@@ -44,18 +44,22 @@ export default function SurveyCard({ survey, responseCount, currentUser, onToggl
             </button>
           </Link>
         )}
-        <Link to={`/report/${s.id}`}>
-          <button className="btn btn-success btn-sm">리포트</button>
-        </Link>
-        <button className="btn btn-outline btn-sm" onClick={() => onToggleClose(s.id)}>
-          {s.closed ? '재개' : '마감'}
-        </button>
-        <button className="btn btn-outline btn-sm" onClick={() => onEdit(s.id)}>
-          수정
-        </button>
-        <button className="btn btn-danger btn-sm" onClick={() => onDelete(s.id)}>
-          삭제
-        </button>
+        {isAdmin && (
+          <>
+            <Link to={`/report/${s.id}`}>
+              <button className="btn btn-success btn-sm">리포트</button>
+            </Link>
+            <button className="btn btn-outline btn-sm" onClick={() => onToggleClose(s.id)}>
+              {s.closed ? '재개' : '마감'}
+            </button>
+            <button className="btn btn-outline btn-sm" onClick={() => onEdit(s.id)}>
+              수정
+            </button>
+            <button className="btn btn-danger btn-sm" onClick={() => onDelete(s.id)}>
+              삭제
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
