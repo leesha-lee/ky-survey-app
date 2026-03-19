@@ -223,10 +223,6 @@ export default function SurveyTake() {
 
                 {q.type === 'scale' && (
                   <>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>
-                      <span>{q.labelMin}</span>
-                      <span>{q.labelMax}</span>
-                    </div>
                     <div className="scale-group">
                       {Array.from({ length: q.scaleMax - q.scaleMin + 1 }, (_, i) => q.scaleMin + i).map(n => (
                         <label key={n}>
@@ -240,6 +236,10 @@ export default function SurveyTake() {
                           <span>{n}</span>
                         </label>
                       ))}
+                    </div>
+                    <div className="scale-labels">
+                      <span>{q.labelMin}</span>
+                      <span>{q.labelMax}</span>
                     </div>
                   </>
                 )}
