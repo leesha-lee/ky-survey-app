@@ -1,0 +1,14 @@
+# Screenshots
+*.png
+
+# Sensitive files
+Claude.md.txt
+
+# Azure AD data
+departments.txt
+
+# Claude Code
+.claude/
+
+# Node
+node_modules/
