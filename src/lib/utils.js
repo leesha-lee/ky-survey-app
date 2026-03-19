@@ -1,0 +1,61 @@
+export function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+export function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+export function getMedian(arr) {
+  const sorted = [...arr].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid] : ((sorted[mid - 1] + sorted[mid]) / 2).toFixed(1);
+}
+
+export function getMode(arr) {
+  const freq = {};
+  arr.forEach(v => freq[v] = (freq[v] || 0) + 1);
+  const max = Math.max(...Object.values(freq));
+  return Object.keys(freq).filter(k => freq[k] === max).join(', ');
+}
+
+export function getStdDev(arr) {
+  const avg = arr.reduce((a, b) => a + b, 0) / arr.length;
+  return Math.sqrt(arr.reduce((s, v) => s + (v - avg) ** 2, 0) / arr.length);
+}
+
+export function formatFileSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+export function csvEsc(v) {
+  const s = String(v);
+  return s.includes(',') || s.includes('"') || s.includes('\n')
+    ? '"' + s.replace(/"/g, '""') + '"'
+    : s;
+}
+
+export function getYoutubeEmbedUrl(url) {
+  if (!url) return null;
+  let m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/);
+  return m ? 'https://www.youtube.com/embed/' + m[1] : null;
+}
+
+export function groupQuestions(qs, groups) {
+  if (!groups || !groups.length) return [{ group: null, questions: qs.map((q, i) => ({ q, qi: i })) }];
+  const result = [];
+  const grouped = {};
+  const ungrouped = [];
+  groups.forEach(g => grouped[g.id] = []);
+  qs.forEach((q, qi) => {
+    if (q.group && grouped[q.group]) grouped[q.group].push({ q, qi });
+    else ungrouped.push({ q, qi });
+  });
+  groups.forEach(g => { if (grouped[g.id].length) result.push({ group: g, questions: grouped[g.id] }); });
+  if (ungrouped.length) result.push({ group: null, questions: ungrouped });
+  return result;
+}
