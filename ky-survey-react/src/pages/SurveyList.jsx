@@ -44,7 +44,7 @@ export default function SurveyList() {
     const original = d.surveys.find(x => x.id === id);
     if (!original) return;
     const copy = JSON.parse(JSON.stringify(original));
-    copy.id = Date.now();
+    copy.id = String(Date.now());
     copy.title = original.title + ' (복사)';
     copy.closed = false;
     copy.createdAt = new Date().toISOString().slice(0, 10);
