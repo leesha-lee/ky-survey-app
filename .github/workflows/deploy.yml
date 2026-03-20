@@ -19,6 +19,9 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    defaults:
+      run:
+        working-directory: ky-survey-react
     steps:
       - uses: actions/checkout@v4
 
@@ -26,6 +29,7 @@ jobs:
         with:
           node-version: 20
           cache: npm
+          cache-dependency-path: ky-survey-react/package-lock.json
 
       - run: npm ci
       - run: npm run build
@@ -36,6 +40,6 @@ jobs:
       - uses: actions/configure-pages@v4
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: ky-survey-react/dist
       - id: deployment
         uses: actions/deploy-pages@v4
