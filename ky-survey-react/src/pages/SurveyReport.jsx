@@ -10,7 +10,7 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
-import { loadData } from '../lib/db';
+import { loadData, saveData } from '../lib/db';
 import { restoreBlobs } from '../lib/blob';
 import { esc, getMedian, getMode, getStdDev, csvEsc, getYoutubeEmbedUrl, getSharePointEmbedUrl, groupQuestions } from '../lib/utils';
 
@@ -86,6 +86,19 @@ export default function SurveyReport() {
       return d === deptFilter;
     });
   }, [allResponses, deptFilter]);
+
+  const deleteResponse = async (ri) => {
+    const rsp = allResponses[ri]?.respondent;
+    const name = rsp?.name || '익명';
+    const time = new Date(allResponses[ri]?.submittedAt).toLocaleString('ko-KR');
+    if (!confirm(`${name}님의 응답(${time})을 삭제하시겠습니까?`)) return;
+    const data = await loadData();
+    const resps = data.responses[id] || [];
+    resps.splice(ri, 1);
+    data.responses[id] = resps;
+    await saveData(data);
+    setAllResponses([...resps]);
+  };
 
   const exportCSV = () => {
     if (!survey || !responses.length) { alert('내보낼 데이터가 없습니다.'); return; }
@@ -233,11 +246,13 @@ export default function SurveyReport() {
                   <tr>
                     <th>#</th><th>응답자</th><th>이메일</th><th>부서</th><th>제출일시</th>
                     {questions.map((q, qi) => <th key={qi}>Q{qi + 1}</th>)}
+                    <th className="no-print">관리</th>
                   </tr>
                 </thead>
                 <tbody>
                   {responses.map((r, ri) => {
                     const rsp = r.respondent || {};
+                    const realIndex = deptFilter ? allResponses.indexOf(r) : ri;
                     return (
                       <tr key={ri}>
                         <td>{ri + 1}</td>
@@ -249,6 +264,9 @@ export default function SurveyReport() {
                           const a = r.answers[qi];
                           return <td key={qi}>{Array.isArray(a) ? a.join(', ') : (a || '-')}</td>;
                         })}
+                        <td className="no-print">
+                          <button className="btn btn-danger btn-sm" onClick={() => deleteResponse(realIndex)}>삭제</button>
+                        </td>
                       </tr>
                     );
                   })}
