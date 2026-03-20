@@ -9,7 +9,7 @@ import SurveyCard from '../components/SurveyCard';
 import { isAdmin } from '../config/roles';
 
 export default function SurveyList() {
-  const { data, refresh } = useDB();
+  const { data, refresh, error } = useDB();
   const { currentUser } = useAuth();
   const navigate = useNavigate();
   const [categoryFilter, setCategoryFilter] = useState('');
@@ -74,7 +74,14 @@ export default function SurveyList() {
           currentFilter={categoryFilter}
           onFilterChange={setCategoryFilter}
         />
-        {!surveys.length ? (
+        {error ? (
+          <div className="empty-state" style={{ color: '#e63946' }}>
+            <p>데이터를 불러올 수 없습니다.</p>
+            <p style={{ fontSize: 13, marginTop: 8 }}>Firestore 보안 규칙을 확인해 주세요. Firebase Console &gt; Firestore Database &gt; Rules 에서 읽기/쓰기를 허용해야 합니다.</p>
+            <pre style={{ fontSize: 11, background: '#f8f9fa', padding: 12, borderRadius: 8, marginTop: 8, textAlign: 'left', whiteSpace: 'pre-wrap' }}>{error.message || String(error)}</pre>
+            <button className="btn btn-outline" style={{ marginTop: 12 }} onClick={refresh}>다시 시도</button>
+          </div>
+        ) : !surveys.length ? (
           <div className="empty-state">
             <p>등록된 설문이 없습니다.</p>
           </div>

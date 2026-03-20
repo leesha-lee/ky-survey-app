@@ -84,22 +84,33 @@ async function migrateFromIndexedDB() {
 export function useDB() {
   const [data, setData] = useState({ surveys: [], responses: {} });
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
 
   const refresh = useCallback(async () => {
-    const d = await loadData();
-    setData(d);
+    try {
+      const d = await loadData();
+      setData(d);
+      setError(null);
+    } catch (e) {
+      console.error('Firestore loadData failed:', e);
+      setError(e);
+    }
   }, []);
 
   useEffect(() => {
     let mounted = true;
     async function init() {
-      await migrateFromIndexedDB();
-      await seedSampleData();
+      try {
+        await migrateFromIndexedDB();
+        await seedSampleData();
+      } catch (e) {
+        console.warn('init warning:', e);
+      }
       if (mounted) await refresh();
     }
     init();
     return () => { mounted = false; };
   }, [refresh]);
 
-  return { data, refresh, saving, setSaving };
+  return { data, refresh, saving, setSaving, error };
 }

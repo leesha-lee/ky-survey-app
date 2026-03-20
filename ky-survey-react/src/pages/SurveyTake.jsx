@@ -73,23 +73,29 @@ export default function SurveyTake() {
   const [questions, setQuestions] = useState([]);
   const [answers, setAnswers] = useState({});
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
 
   useEffect(() => {
     async function load() {
-      const data = await loadData();
-      const s = data.surveys.find(x => x.id === id);
-      if (!s) { setLoading(false); return; }
-      setSurvey(s);
+      try {
+        const data = await loadData();
+        const s = data.surveys.find(x => x.id === id);
+        if (!s) { setLoading(false); return; }
+        setSurvey(s);
 
-      if (currentUser) {
-        // Check duplicate
-        const existing = (data.responses[id] || []).find(r => r.respondent && r.respondent.email === currentUser.email);
-        if (existing && !confirm(`이미 ${new Date(existing.submittedAt).toLocaleString('ko-KR')}에 응답하셨습니다.\n다시 응답하시겠습니까? (기존 응답은 유지됩니다)`)) {
-          navigate('/');
-          return;
+        if (currentUser) {
+          // Check duplicate
+          const existing = (data.responses[id] || []).find(r => r.respondent && r.respondent.email === currentUser.email);
+          if (existing && !confirm(`이미 ${new Date(existing.submittedAt).toLocaleString('ko-KR')}에 응답하셨습니다.\n다시 응답하시겠습니까? (기존 응답은 유지됩니다)`)) {
+            navigate('/');
+            return;
+          }
+          const restored = await restoreBlobs(s.questions);
+          setQuestions(restored);
         }
-        const restored = await restoreBlobs(s.questions);
-        setQuestions(restored);
+      } catch (e) {
+        console.error('Survey load failed:', e);
+        setLoadError(e);
       }
       setLoading(false);
     }
@@ -144,6 +150,7 @@ export default function SurveyTake() {
   };
 
   if (loading) return <div className="page active"><div className="card"><div className="empty-state"><p>로딩 중...</p></div></div></div>;
+  if (loadError) return <div className="page active"><div className="card"><div className="empty-state" style={{ color: '#e63946' }}><p>데이터를 불러올 수 없습니다.</p><p style={{ fontSize: 13, marginTop: 8 }}>Firestore 보안 규칙을 확인해 주세요.</p><pre style={{ fontSize: 11, background: '#f8f9fa', padding: 12, borderRadius: 8, marginTop: 8, whiteSpace: 'pre-wrap' }}>{loadError.message || String(loadError)}</pre></div></div></div>;
   if (!survey) return <div className="page active"><div className="card"><div className="empty-state"><p>설문을 찾을 수 없습니다.</p></div></div></div>;
 
   // Not logged in
