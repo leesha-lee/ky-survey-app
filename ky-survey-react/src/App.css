@@ -67,11 +67,15 @@ textarea { resize: vertical; min-height: 60px; }
 .take-q { margin-bottom: 24px; }
 .take-q .q-title { font-weight: 700; font-size: 15px; margin-bottom: 10px; }
 .take-q .q-title .required { color: #e63946; }
-.radio-group label, .check-group label { display: flex; align-items: center; gap: 8px; font-weight: 400; margin-bottom: 8px; cursor: pointer; }
-.radio-group input, .check-group input { width: auto; margin: 0; }
+.radio-group label, .check-group label { display: flex; align-items: center; gap: 10px; font-weight: 400; margin-bottom: 6px; cursor: pointer; padding: 10px 14px; border-radius: 8px; border: 1.5px solid #e5e7eb; transition: all .2s; }
+.radio-group label:hover, .check-group label:hover { border-color: #4361ee; background: #f0f3ff; }
+.radio-group label:has(input:checked), .check-group label:has(input:checked) { border-color: #4361ee; background: #eef1ff; }
+.radio-group label:has(input:checked) span, .check-group label:has(input:checked) span { color: #4361ee; font-weight: 600; }
+.radio-group input, .check-group input { width: auto; margin: 0; accent-color: #4361ee; }
 .scale-group { display: flex; gap: 8px; flex-wrap: wrap; }
-.scale-group label { display: flex; flex-direction: column; align-items: center; gap: 4px; font-weight: 400; cursor: pointer; padding: 10px 0; border: 1.5px solid #d1d5db; border-radius: 8px; transition: .2s; min-width: 56px; flex: 1; }
-.scale-group label:hover { border-color: #4361ee; }
+.scale-group label { display: flex; flex-direction: column; align-items: center; gap: 4px; font-weight: 400; cursor: pointer; padding: 10px 0; border: 1.5px solid #d1d5db; border-radius: 8px; transition: all .2s; min-width: 56px; flex: 1; }
+.scale-group label:hover { border-color: #4361ee; background: #f0f3ff; }
+.scale-group label:has(input:checked) { border-color: #4361ee; background: #eef1ff; }
 .scale-group input:checked + span { color: #4361ee; font-weight: 700; }
 .scale-group input { display: none; }
 .scale-labels { display: flex; justify-content: space-between; font-size: 12px; color: #6b7280; margin-top: 4px; }
@@ -105,6 +109,10 @@ textarea { resize: vertical; min-height: 60px; }
 .compare-legend span::before { content: ''; display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: middle; }
 .compare-legend .leg-a::before { background: #4361ee; } .compare-legend .leg-b::before { background: #e63946; }
 .db-info { position: fixed; bottom: 12px; right: 12px; background: #1a1a2e; color: #fff; padding: 6px 14px; border-radius: 8px; font-size: 12px; opacity: .7; z-index: 99; }
+/* Sticky toolbar for question type buttons */
+.sticky-toolbar { position: sticky; top: 0; z-index: 50; background: #fff; padding: 12px 0; margin: 0 -2px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; border-bottom: 1.5px solid #e5e7eb; }
+/* Sticky bottom bar for save/cancel */
+.sticky-bottom-bar { position: sticky; bottom: 0; z-index: 50; background: #fff; padding: 14px 0; text-align: right; display: flex; justify-content: flex-end; gap: 8px; border-top: 1.5px solid #e5e7eb; }
 /* Question Groups */
 .group-manager { background: #f8f9ff; border: 1.5px solid #e0e4ff; border-radius: 10px; padding: 16px; margin-bottom: 18px; }
 .group-manager h4 { font-size: 14px; margin-bottom: 10px; color: #4361ee; }

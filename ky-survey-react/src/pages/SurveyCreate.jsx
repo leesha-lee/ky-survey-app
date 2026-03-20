@@ -568,16 +568,13 @@ export default function SurveyCreate() {
         </div>
 
         {/* Question Builder */}
-        <div className="flex-between">
-          <h3>질문 목록</h3>
+        <div className="sticky-toolbar">
+          <h3 style={{ margin: 0 }}>질문 목록</h3>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button className="btn btn-outline btn-sm" onClick={() => addQuestion('radio')}>객관식 (단일)</button>
             <button className="btn btn-outline btn-sm" onClick={() => addQuestion('checkbox')}>객관식 (복수)</button>
             <button className="btn btn-outline btn-sm" onClick={() => addQuestion('scale')}>척도</button>
             <button className="btn btn-outline btn-sm" onClick={() => addQuestion('text')}>주관식</button>
-            <button className="btn-ad" onClick={addDeptQuestion} title="Azure AD 부서 목록을 옵션으로 불러옵니다">
-              <MsIcon />AD 부서 질문
-            </button>
           </div>
         </div>
 
@@ -589,8 +586,8 @@ export default function SurveyCreate() {
         )}
       </div>
 
-      <div style={{ textAlign: 'right', marginBottom: 40 }}>
-        <button className="btn btn-secondary" onClick={() => navigate('/')} style={{ marginRight: 8 }}>취소</button>
+      <div className="sticky-bottom-bar">
+        <button className="btn btn-secondary" onClick={() => navigate('/')}>취소</button>
         <button className="btn btn-success" onClick={saveSurvey}>설문 저장</button>
       </div>
     </div>
