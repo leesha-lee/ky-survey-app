@@ -519,12 +519,7 @@ export default function SurveyCreate() {
                 <button className="btn btn-danger btn-sm" onClick={() => removeOption(qi, oi)}>&times;</button>
               </div>
             ))}
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-              <button className="add-option-btn" onClick={() => addOption(qi)}>+ 옵션 추가</button>
-              <button className="btn-ad" style={{ fontSize: 11, padding: '4px 10px' }} onClick={() => loadADOptionsToQuestion(qi)}>
-                <MsIcon size={12} />AD 부서 불러오기
-              </button>
-            </div>
+            <button className="add-option-btn" onClick={() => addOption(qi)}>+ 옵션 추가</button>
           </>
         )}
 
