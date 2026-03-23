@@ -145,6 +145,16 @@ export default function SurveyCreate() {
     setQuestions(prev => prev.filter((_, i) => i !== qi));
   };
 
+  const moveQuestion = (qi, dir) => {
+    setQuestions(prev => {
+      const arr = [...prev];
+      const target = qi + dir;
+      if (target < 0 || target >= arr.length) return prev;
+      [arr[qi], arr[target]] = [arr[target], arr[qi]];
+      return arr;
+    });
+  };
+
   const addOption = (qi) => {
     setQuestions(prev => prev.map((q, i) =>
       i === qi ? { ...q, options: [...q.options, '옵션 ' + (q.options.length + 1)] } : q
@@ -414,7 +424,11 @@ export default function SurveyCreate() {
             <span className="q-group-badge" style={{ background: grp.color }}>{grp.name}</span>
           )}
         </div>
-        <button className="q-remove" onClick={() => removeQuestion(qi)}>&times;</button>
+        <div className="q-actions">
+          <button className="q-move" onClick={() => moveQuestion(qi, -1)} disabled={qi === 0} title="위로 이동">&#9650;</button>
+          <button className="q-move" onClick={() => moveQuestion(qi, 1)} disabled={qi === questions.length - 1} title="아래로 이동">&#9660;</button>
+          <button className="q-remove" onClick={() => removeQuestion(qi)}>&times;</button>
+        </div>
 
         {questionGroups.length > 0 && (
           <select

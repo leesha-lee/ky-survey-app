@@ -26,7 +26,11 @@ textarea { resize: vertical; min-height: 60px; }
 .btn-sm { padding: 6px 14px; font-size: 13px; }
 .q-item { border: 1.5px solid #e5e7eb; border-radius: 10px; padding: 18px; margin-bottom: 14px; position: relative; }
 .q-item .q-num { font-weight: 700; color: #4361ee; margin-bottom: 8px; }
-.q-item .q-remove { position: absolute; top: 12px; right: 12px; background: none; border: none; color: #e63946; cursor: pointer; font-size: 18px; }
+.q-item .q-actions { position: absolute; top: 10px; right: 10px; display: flex; gap: 4px; align-items: center; }
+.q-item .q-move { background: none; border: 1px solid #d1d5db; color: #6b7280; cursor: pointer; font-size: 11px; border-radius: 4px; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; transition: .2s; }
+.q-item .q-move:hover:not(:disabled) { border-color: #4361ee; color: #4361ee; background: #f0f3ff; }
+.q-item .q-move:disabled { opacity: .3; cursor: default; }
+.q-item .q-actions .q-remove { position: static; background: none; border: none; color: #e63946; cursor: pointer; font-size: 18px; margin-left: 2px; }
 .option-row { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
 .option-row input { flex: 1; margin-bottom: 0; }
 .option-row button { flex-shrink: 0; }
