@@ -434,6 +434,13 @@ export default function SurveyCreate() {
           </div>
           <button className="btn btn-danger btn-sm" onClick={() => removeMedia(qi, mi)}>&times;</button>
         </div>
+        <input
+          type="text"
+          className="media-caption-input"
+          value={m.caption || ''}
+          onChange={(e) => updateMedia(qi, mi, { caption: e.target.value })}
+          placeholder="미디어 설명 (선택)"
+        />
         {m.type === 'image' && (questions[qi].type === 'radio' || questions[qi].type === 'checkbox') && (
           <select
             className="media-option-match"

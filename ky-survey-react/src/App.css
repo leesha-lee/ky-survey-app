@@ -113,6 +113,10 @@ textarea { resize: vertical; min-height: 60px; }
 .compare-legend span::before { content: ''; display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: middle; }
 .compare-legend .leg-a::before { background: #4361ee; } .compare-legend .leg-b::before { background: #e63946; }
 .db-info { position: fixed; bottom: 12px; right: 12px; background: #1a1a2e; color: #fff; padding: 6px 14px; border-radius: 8px; font-size: 12px; opacity: .7; z-index: 99; }
+/* Media caption */
+.media-caption-input { font-size: 13px; padding: 6px 10px; border-radius: 6px; border: 1.5px solid #d1d5db; background: #fafaff; margin: 4px 0 8px; width: 100%; }
+.media-caption-input:focus { border-color: #4361ee; }
+.media-caption { font-size: 13px; color: #4b5563; text-align: center; padding: 6px 8px; background: #f8f9fa; border-radius: 0 0 8px 8px; margin-top: -2px; line-height: 1.4; }
 /* Media-option matching */
 .media-option-match { font-size: 12px; padding: 4px 8px; border-radius: 6px; border: 1.5px solid #d1d5db; background: #f8f9ff; margin: 4px 0 8px; }
 .option-content { display: flex; flex-direction: column; gap: 6px; flex: 1; }

@@ -53,7 +53,10 @@ function ImageCarousel({ images, onImageClick }) {
 
   if (total <= 1) {
     return images.length === 1 ? (
-      <img src={images[0].url} alt={images[0].alt || ''} style={{ cursor: 'zoom-in', maxWidth: '100%', borderRadius: 8 }} onClick={() => onImageClick && onImageClick(images[0])} />
+      <div>
+        <img src={images[0].url} alt={images[0].alt || ''} style={{ cursor: 'zoom-in', maxWidth: '100%', borderRadius: 8 }} onClick={() => onImageClick && onImageClick(images[0])} />
+        {images[0].caption && <div className="media-caption">{images[0].caption}</div>}
+      </div>
     ) : null;
   }
 
@@ -72,6 +75,7 @@ function ImageCarousel({ images, onImageClick }) {
         ))}
       </div>
       <button className="carousel-btn carousel-next" onClick={next} disabled={idx === total - 1}>&rsaquo;</button>
+      {images[idx] && images[idx].caption && <div className="media-caption">{images[idx].caption}</div>}
       <div className="carousel-dots">
         {images.map((_, i) => (
           <span key={i} className={i === idx ? 'active' : ''} onClick={() => scrollTo(i)} />
@@ -94,24 +98,25 @@ function MediaDisplay({ mediaArr, onLightbox }) {
       {imageItems.length > 0 && (
         <div className="media-preview">
           <ImageCarousel
-            images={imageItems.map(m => ({ url: m.url, alt: m.alt || '' }))}
+            images={imageItems.map(m => ({ url: m.url, alt: m.alt || '', caption: m.caption || '' }))}
             onImageClick={(img) => onLightbox && onLightbox({ src: img.url, alt: img.alt })}
           />
         </div>
       )}
       {otherItems.map((m, i) => {
+        const cap = m.caption ? <div className="media-caption">{m.caption}</div> : null;
         if (m.type === 'image') {
           const spEmbed = getSharePointEmbedUrl(m.url);
-          return <div className="media-preview" key={i}><iframe src={spEmbed} allowFullScreen></iframe></div>;
+          return <div className="media-preview" key={i}><iframe src={spEmbed} allowFullScreen></iframe>{cap}</div>;
         }
         if (m.type === 'video') {
           const spEmbed = getSharePointEmbedUrl(m.url);
-          if (spEmbed) return <div className="media-preview" key={i}><iframe src={spEmbed} allowFullScreen></iframe></div>;
-          return <div className="media-preview" key={i}><video src={m.url} controls></video></div>;
+          if (spEmbed) return <div className="media-preview" key={i}><iframe src={spEmbed} allowFullScreen></iframe>{cap}</div>;
+          return <div className="media-preview" key={i}><video src={m.url} controls></video>{cap}</div>;
         }
         if (m.type === 'youtube') {
           const embedUrl = getYoutubeEmbedUrl(m.url);
-          return embedUrl ? <div className="media-preview" key={i}><iframe src={embedUrl} allowFullScreen></iframe></div> : null;
+          return embedUrl ? <div className="media-preview" key={i}><iframe src={embedUrl} allowFullScreen></iframe>{cap}</div> : null;
         }
         if (m.type === 'link') {
           return (
@@ -119,6 +124,7 @@ function MediaDisplay({ mediaArr, onLightbox }) {
               <a href={m.url} target="_blank" rel="noopener noreferrer" className="link-card">
                 &#128279; {m.label || m.url}
               </a>
+              {cap}
             </div>
           );
         }
@@ -282,7 +288,7 @@ export default function SurveyTake() {
                             {optionMedia.length > 0 && (
                               <div className="option-media">
                                 <ImageCarousel
-                                  images={optionMedia.map(m => ({ url: m.url, alt: m.alt || o }))}
+                                  images={optionMedia.map(m => ({ url: m.url, alt: m.alt || o, caption: m.caption || '' }))}
                                   onImageClick={(img) => { setLightbox({ src: img.url, alt: img.alt }); }}
                                 />
                               </div>
@@ -312,7 +318,7 @@ export default function SurveyTake() {
                             {optionMedia.length > 0 && (
                               <div className="option-media">
                                 <ImageCarousel
-                                  images={optionMedia.map(m => ({ url: m.url, alt: m.alt || o }))}
+                                  images={optionMedia.map(m => ({ url: m.url, alt: m.alt || o, caption: m.caption || '' }))}
                                   onImageClick={(img) => { setLightbox({ src: img.url, alt: img.alt }); }}
                                 />
                               </div>
