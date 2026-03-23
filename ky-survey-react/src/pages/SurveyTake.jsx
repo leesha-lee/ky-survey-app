@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { loadData, saveData } from '../lib/db';
@@ -25,20 +25,84 @@ function ImageLightbox({ src, alt, onClose }) {
   );
 }
 
-function MediaDisplay({ mediaArr }) {
-  const [lightbox, setLightbox] = useState(null);
+function ImageCarousel({ images, onImageClick }) {
+  const trackRef = useRef(null);
+  const [idx, setIdx] = useState(0);
+  const total = images.length;
+  const touchStart = useRef(null);
+
+  const scrollTo = useCallback((i) => {
+    const clamped = Math.max(0, Math.min(i, total - 1));
+    setIdx(clamped);
+    if (trackRef.current) {
+      const child = trackRef.current.children[clamped];
+      if (child) child.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+  }, [total]);
+
+  const prev = () => scrollTo(idx - 1);
+  const next = () => scrollTo(idx + 1);
+
+  const onTouchStart = (e) => { touchStart.current = e.touches[0].clientX; };
+  const onTouchEnd = (e) => {
+    if (touchStart.current == null) return;
+    const diff = touchStart.current - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 40) { diff > 0 ? next() : prev(); }
+    touchStart.current = null;
+  };
+
+  if (total <= 1) {
+    return images.length === 1 ? (
+      <img src={images[0].url} alt={images[0].alt || ''} style={{ cursor: 'zoom-in', maxWidth: '100%', borderRadius: 8 }} onClick={() => onImageClick && onImageClick(images[0])} />
+    ) : null;
+  }
+
+  return (
+    <div className="carousel" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+      <button className="carousel-btn carousel-prev" onClick={prev} disabled={idx === 0}>&lsaquo;</button>
+      <div className="carousel-track" ref={trackRef}>
+        {images.map((img, i) => (
+          <img
+            key={i}
+            src={img.url}
+            alt={img.alt || ''}
+            className={i === idx ? 'active' : ''}
+            onClick={() => onImageClick && onImageClick(img)}
+          />
+        ))}
+      </div>
+      <button className="carousel-btn carousel-next" onClick={next} disabled={idx === total - 1}>&rsaquo;</button>
+      <div className="carousel-dots">
+        {images.map((_, i) => (
+          <span key={i} className={i === idx ? 'active' : ''} onClick={() => scrollTo(i)} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MediaDisplay({ mediaArr, onLightbox }) {
   if (!mediaArr || !mediaArr.length) return null;
   const items = mediaArr.filter(m => m.url);
   if (!items.length) return null;
 
+  const imageItems = items.filter(m => m.type === 'image' && !getSharePointEmbedUrl(m.url));
+  const otherItems = items.filter(m => m.type !== 'image' || getSharePointEmbedUrl(m.url));
+
   return (
     <div style={{ marginBottom: 14 }}>
-      {lightbox && <ImageLightbox src={lightbox.src} alt={lightbox.alt} onClose={() => setLightbox(null)} />}
-      {items.map((m, i) => {
+      {imageItems.length > 0 && (
+        <div className="media-preview">
+          <ImageCarousel
+            images={imageItems.map(m => ({ url: m.url, alt: m.alt || '' }))}
+            onImageClick={(img) => onLightbox && onLightbox({ src: img.url, alt: img.alt })}
+          />
+        </div>
+      )}
+      {otherItems.map((m, i) => {
         if (m.type === 'image') {
           const spEmbed = getSharePointEmbedUrl(m.url);
-          if (spEmbed) return <div className="media-preview" key={i}><iframe src={spEmbed} allowFullScreen></iframe></div>;
-          return <div className="media-preview" key={i}><img src={m.url} alt={m.alt || ''} style={{ cursor: 'zoom-in' }} onClick={() => setLightbox({ src: m.url, alt: m.alt || '' })} /></div>;
+          return <div className="media-preview" key={i}><iframe src={spEmbed} allowFullScreen></iframe></div>;
         }
         if (m.type === 'video') {
           const spEmbed = getSharePointEmbedUrl(m.url);
@@ -198,7 +262,7 @@ export default function SurveyTake() {
                 Q{qi + 1}. {q.title}
                 {q.required && <span className="required"> *</span>}
               </div>
-                <MediaDisplay mediaArr={(q.media || []).filter(m => m.optionIndex == null)} />
+                <MediaDisplay mediaArr={(q.media || []).filter(m => m.optionIndex == null)} onLightbox={setLightbox} />
 
                 {q.type === 'radio' && (
                   <div className="radio-group">
@@ -217,9 +281,10 @@ export default function SurveyTake() {
                             <span>{o}</span>
                             {optionMedia.length > 0 && (
                               <div className="option-media">
-                                {optionMedia.map((m, mi) => (
-                                  <img key={mi} src={m.url} alt={m.alt || o} onClick={(e) => { e.preventDefault(); setLightbox({ src: m.url, alt: m.alt || o }); }} />
-                                ))}
+                                <ImageCarousel
+                                  images={optionMedia.map(m => ({ url: m.url, alt: m.alt || o }))}
+                                  onImageClick={(img) => { setLightbox({ src: img.url, alt: img.alt }); }}
+                                />
                               </div>
                             )}
                           </div>
@@ -246,9 +311,10 @@ export default function SurveyTake() {
                             <span>{o}</span>
                             {optionMedia.length > 0 && (
                               <div className="option-media">
-                                {optionMedia.map((m, mi) => (
-                                  <img key={mi} src={m.url} alt={m.alt || o} onClick={(e) => { e.preventDefault(); setLightbox({ src: m.url, alt: m.alt || o }); }} />
-                                ))}
+                                <ImageCarousel
+                                  images={optionMedia.map(m => ({ url: m.url, alt: m.alt || o }))}
+                                  onImageClick={(img) => { setLightbox({ src: img.url, alt: img.alt }); }}
+                                />
                               </div>
                             )}
                           </div>

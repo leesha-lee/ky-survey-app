@@ -116,8 +116,26 @@ textarea { resize: vertical; min-height: 60px; }
 /* Media-option matching */
 .media-option-match { font-size: 12px; padding: 4px 8px; border-radius: 6px; border: 1.5px solid #d1d5db; background: #f8f9ff; margin: 4px 0 8px; }
 .option-content { display: flex; flex-direction: column; gap: 6px; flex: 1; }
-.option-media { display: flex; gap: 6px; flex-wrap: wrap; }
+.option-media { display: flex; gap: 6px; flex-wrap: wrap; width: 100%; }
 .option-media img { max-height: 100px; max-width: 160px; border-radius: 6px; object-fit: cover; cursor: zoom-in; border: 1px solid #e5e7eb; }
+/* Image Carousel */
+.carousel { position: relative; width: 100%; overflow: hidden; border-radius: 8px; background: #f8f9fa; }
+.carousel-track { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scroll-behavior: smooth; gap: 0; -ms-overflow-style: none; scrollbar-width: none; }
+.carousel-track::-webkit-scrollbar { display: none; }
+.carousel-track img { min-width: 100%; max-width: 100%; max-height: 360px; object-fit: contain; scroll-snap-align: center; cursor: zoom-in; flex-shrink: 0; border-radius: 8px; background: #f8f9fa; }
+.carousel-btn { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,.85); border: 1px solid #d1d5db; color: #1a1a2e; width: 36px; height: 36px; border-radius: 50%; font-size: 22px; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 2; transition: .2s; box-shadow: 0 2px 6px rgba(0,0,0,.1); line-height: 1; }
+.carousel-btn:hover:not(:disabled) { background: #fff; border-color: #4361ee; color: #4361ee; }
+.carousel-btn:disabled { opacity: .3; cursor: default; }
+.carousel-prev { left: 8px; }
+.carousel-next { right: 8px; }
+.carousel-dots { display: flex; justify-content: center; gap: 6px; padding: 8px 0; }
+.carousel-dots span { width: 8px; height: 8px; border-radius: 50%; background: #d1d5db; cursor: pointer; transition: .2s; }
+.carousel-dots span.active { background: #4361ee; transform: scale(1.2); }
+/* Option-level carousel smaller */
+.option-media .carousel { max-width: 320px; }
+.option-media .carousel-track img { max-height: 160px; }
+.option-media .carousel-btn { width: 28px; height: 28px; font-size: 16px; }
+.option-media .carousel-dots span { width: 6px; height: 6px; }
 .radio-group label.has-media, .check-group label.has-media { align-items: flex-start; padding-top: 12px; }
 .radio-group label.has-media input, .check-group label.has-media input { margin-top: 3px; }
 /* Sticky toolbar for question type buttons */
