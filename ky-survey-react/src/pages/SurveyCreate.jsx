@@ -208,6 +208,32 @@ export default function SurveyCreate() {
     reader.readAsDataURL(file);
   };
 
+  const addMultipleImages = (qi, files) => {
+    const maxSize = 50 * 1024 * 1024;
+    const imageFiles = Array.from(files).filter(f => {
+      if (!f.type.startsWith('image/')) return false;
+      if (f.size > maxSize) { alert(`${f.name}: 파일 크기가 50MB를 초과합니다.`); return false; }
+      return true;
+    });
+    if (!imageFiles.length) return;
+    const newMedia = imageFiles.map(f => ({ type: 'image', url: '', label: '', alt: '', source: 'file', fileName: f.name, fileSize: formatFileSize(f.size) }));
+    setQuestions(prev => prev.map((q, i) => i === qi ? { ...q, media: [...(q.media || []), ...newMedia] } : q));
+    const baseIndex = (questions[qi].media || []).length;
+    imageFiles.forEach((f, fi) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setQuestions(prev => prev.map((q, i) => {
+          if (i !== qi) return q;
+          const media = [...q.media];
+          const mi = baseIndex + fi;
+          if (media[mi]) media[mi] = { ...media[mi], url: e.target.result };
+          return { ...q, media };
+        }));
+      };
+      reader.readAsDataURL(f);
+    });
+  };
+
   const handleFileSelect = (e, qi, mi) => {
     const f = e.target.files[0];
     if (f) processFile(f, qi, mi);
@@ -514,8 +540,12 @@ export default function SurveyCreate() {
           </summary>
           <div className="media-body">
             {(q.media || []).map((m, mi) => renderMediaItem(qi, m, mi))}
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 6, alignItems: 'center' }}>
               <button className="btn btn-outline btn-sm" onClick={() => addMedia(qi, 'image')}>+ 이미지</button>
+              <label className="btn btn-outline btn-sm" style={{ cursor: 'pointer', margin: 0 }}>
+                + 이미지 다중 업로드
+                <input type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={(e) => { addMultipleImages(qi, e.target.files); e.target.value = ''; }} />
+              </label>
               <button className="btn btn-outline btn-sm" onClick={() => addMedia(qi, 'video')}>+ 동영상</button>
               <button className="btn btn-outline btn-sm" onClick={() => addMedia(qi, 'youtube')}>+ YouTube</button>
               <button className="btn btn-outline btn-sm" onClick={() => addMedia(qi, 'link')}>+ URL 링크</button>
