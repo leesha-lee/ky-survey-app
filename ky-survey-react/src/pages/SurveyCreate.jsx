@@ -434,6 +434,18 @@ export default function SurveyCreate() {
           </div>
           <button className="btn btn-danger btn-sm" onClick={() => removeMedia(qi, mi)}>&times;</button>
         </div>
+        {m.type === 'image' && (questions[qi].type === 'radio' || questions[qi].type === 'checkbox') && (
+          <select
+            className="media-option-match"
+            value={m.optionIndex != null ? m.optionIndex : ''}
+            onChange={(e) => updateMedia(qi, mi, { optionIndex: e.target.value === '' ? null : Number(e.target.value) })}
+          >
+            <option value="">선택지 매칭 없음</option>
+            {(questions[qi].options || []).map((o, oi) => (
+              <option key={oi} value={oi}>{o}</option>
+            ))}
+          </select>
+        )}
         {m.url && !m.url.startsWith('fs://') && !m.url.startsWith('idb://') && <MediaPreview m={m} />}
       </div>
     );

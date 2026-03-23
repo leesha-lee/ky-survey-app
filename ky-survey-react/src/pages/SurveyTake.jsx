@@ -74,6 +74,7 @@ export default function SurveyTake() {
   const [answers, setAnswers] = useState({});
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
+  const [lightbox, setLightbox] = useState(null);
 
   useEffect(() => {
     async function load() {
@@ -177,6 +178,7 @@ export default function SurveyTake() {
 
   return (
     <div className="page active">
+      {lightbox && <ImageLightbox src={lightbox.src} alt={lightbox.alt} onClose={() => setLightbox(null)} />}
       <div className="card">
         <h2>{survey.title}</h2>
         <p style={{ color: '#6b7280', marginBottom: 20 }}>{survey.description || ''}</p>
@@ -196,39 +198,63 @@ export default function SurveyTake() {
                 Q{qi + 1}. {q.title}
                 {q.required && <span className="required"> *</span>}
               </div>
-                <MediaDisplay mediaArr={q.media} />
+                <MediaDisplay mediaArr={(q.media || []).filter(m => m.optionIndex == null)} />
 
                 {q.type === 'radio' && (
                   <div className="radio-group">
-                    {q.options.map((o, oi) => (
-                      <label key={oi}>
-                        <input
-                          type="radio"
-                          name={`q_${qi}`}
-                          value={o}
-                          checked={answers[qi] === o}
-                          onChange={() => setAnswer(qi, o)}
-                        />
-                        <span>{o}</span>
-                      </label>
-                    ))}
+                    {q.options.map((o, oi) => {
+                      const optionMedia = (q.media || []).filter(m => m.optionIndex === oi && m.url);
+                      return (
+                        <label key={oi} className={optionMedia.length ? 'has-media' : ''}>
+                          <input
+                            type="radio"
+                            name={`q_${qi}`}
+                            value={o}
+                            checked={answers[qi] === o}
+                            onChange={() => setAnswer(qi, o)}
+                          />
+                          <div className="option-content">
+                            <span>{o}</span>
+                            {optionMedia.length > 0 && (
+                              <div className="option-media">
+                                {optionMedia.map((m, mi) => (
+                                  <img key={mi} src={m.url} alt={m.alt || o} onClick={(e) => { e.preventDefault(); setLightbox({ src: m.url, alt: m.alt || o }); }} />
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </label>
+                      );
+                    })}
                   </div>
                 )}
 
                 {q.type === 'checkbox' && (
                   <div className="check-group">
-                    {q.options.map((o, oi) => (
-                      <label key={oi}>
-                        <input
-                          type="checkbox"
-                          name={`q_${qi}`}
-                          value={o}
-                          checked={(answers[qi] || []).includes(o)}
-                          onChange={() => toggleCheckbox(qi, o)}
-                        />
-                        <span>{o}</span>
-                      </label>
-                    ))}
+                    {q.options.map((o, oi) => {
+                      const optionMedia = (q.media || []).filter(m => m.optionIndex === oi && m.url);
+                      return (
+                        <label key={oi} className={optionMedia.length ? 'has-media' : ''}>
+                          <input
+                            type="checkbox"
+                            name={`q_${qi}`}
+                            value={o}
+                            checked={(answers[qi] || []).includes(o)}
+                            onChange={() => toggleCheckbox(qi, o)}
+                          />
+                          <div className="option-content">
+                            <span>{o}</span>
+                            {optionMedia.length > 0 && (
+                              <div className="option-media">
+                                {optionMedia.map((m, mi) => (
+                                  <img key={mi} src={m.url} alt={m.alt || o} onClick={(e) => { e.preventDefault(); setLightbox({ src: m.url, alt: m.alt || o }); }} />
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </label>
+                      );
+                    })}
                   </div>
                 )}
 
