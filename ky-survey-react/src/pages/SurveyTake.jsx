@@ -261,8 +261,17 @@ export default function SurveyTake() {
 
         {questions.map((q, qi) => {
           const grp = q.group && groupMap[q.group];
+          const prevGrp = qi > 0 ? questions[qi - 1].group : null;
+          const showGroupDivider = grp && q.group !== prevGrp;
           return (
-            <div className="take-q" key={qi}>
+            <div key={qi}>
+              {showGroupDivider && (
+                <div className="take-group-divider" style={{ borderLeftColor: grp.color }}>
+                  <span className="take-group-divider-dot" style={{ background: grp.color }}></span>
+                  <span>{grp.name}</span>
+                </div>
+              )}
+              <div className="take-q">
               <div className="q-title">
                 {grp && <span className="q-group-badge" style={{ background: grp.color }}>{grp.name}</span>}
                 Q{qi + 1}. {q.title}
@@ -362,6 +371,7 @@ export default function SurveyTake() {
                     onChange={(e) => setAnswer(qi, e.target.value)}
                   />
                 )}
+              </div>
             </div>
           );
         })}

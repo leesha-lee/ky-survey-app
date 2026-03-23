@@ -8,7 +8,7 @@ import { fetchADDepartments, getMainDepartments } from '../lib/adDepartments';
 import { loginRequest } from '../config/msal';
 import { CATEGORIES } from '../config/categories';
 
-const GROUP_COLORS = ['#4361ee', '#2ec4b6', '#e63946', '#ffd166', '#06d6a0', '#8338ec', '#fb5607', '#118ab2', '#3a86a7', '#ff006e'];
+const GROUP_COLORS = ['#4361ee', '#2563eb', '#0ea5e9', '#06b6d4', '#0891b2', '#3b82f6', '#6366f1', '#118ab2', '#1d4ed8', '#0284c7'];
 const TYPE_LABELS = { radio: '객관식 (단일)', checkbox: '객관식 (복수)', scale: '척도', text: '주관식' };
 
 function MsIcon({ size = 14 }) {
