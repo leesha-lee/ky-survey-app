@@ -1,7 +1,10 @@
 import { uid } from './utils';
 import { idbGet, idbPut, idbDelete } from './db';
 
-// Compress image via Canvas (max 1920px, JPEG 0.92)
+// Firestore doc limit ~1MB, keep blob under 900KB
+const MAX_BLOB_BYTES = 900 * 1024;
+
+// Compress image via Canvas, ensuring result fits Firestore limit
 function compressImage(dataUrl) {
   return new Promise((resolve) => {
     const img = new Image();
@@ -16,15 +19,24 @@ function compressImage(dataUrl) {
       canvas.width = w;
       canvas.height = h;
       canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      // PNG는 원본 포맷 유지, 그 외는 고품질 JPEG
-      const isPng = dataUrl.startsWith('data:image/png');
-      if (isPng) {
-        resolve(canvas.toDataURL('image/png'));
-      } else {
-        resolve(canvas.toDataURL('image/jpeg', 0.92));
+
+      // Try JPEG at decreasing quality until under limit
+      const qualities = [0.92, 0.8, 0.6, 0.4, 0.3];
+      for (const q of qualities) {
+        const result = canvas.toDataURL('image/jpeg', q);
+        if (result.length <= MAX_BLOB_BYTES) {
+          resolve(result);
+          return;
+        }
       }
+      // Still too large — scale down further
+      const scale = 0.5;
+      canvas.width = Math.round(w * scale);
+      canvas.height = Math.round(h * scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/jpeg', 0.6));
     };
-    img.onerror = () => resolve(dataUrl); // fallback to original
+    img.onerror = () => resolve(dataUrl);
     img.src = dataUrl;
   });
 }

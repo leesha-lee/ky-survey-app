@@ -287,6 +287,8 @@ export default function SurveyCreate() {
     }
   };
 
+  const [saving, setSaving] = useState(false);
+
   const saveSurvey = async () => {
     if (!title.trim()) return alert('설문 제목을 입력하세요.');
     if (!category) return alert('카테고리를 선택하세요.');
@@ -295,33 +297,41 @@ export default function SurveyCreate() {
       if (!questions[i].title.trim()) return alert(`Q${i + 1}의 질문을 입력하세요.`);
     }
 
-    const data = await loadData();
-    const cleaned = await saveSurveyData(data, questions);
+    setSaving(true);
+    try {
+      const data = await loadData();
+      const cleaned = await saveSurveyData(data, questions);
 
-    if (editId) {
-      const idx = data.surveys.findIndex(s => s.id === editId);
-      if (idx >= 0) {
-        await deleteSurveyBlobs(data.surveys[idx].questions);
-        data.surveys[idx].title = title.trim();
-        data.surveys[idx].category = category;
-        data.surveys[idx].description = description.trim();
-        data.surveys[idx].questions = cleaned;
-        data.surveys[idx].questionGroups = JSON.parse(JSON.stringify(questionGroups));
+      if (editId) {
+        const idx = data.surveys.findIndex(s => s.id === editId);
+        if (idx >= 0) {
+          await deleteSurveyBlobs(data.surveys[idx].questions);
+          data.surveys[idx].title = title.trim();
+          data.surveys[idx].category = category;
+          data.surveys[idx].description = description.trim();
+          data.surveys[idx].questions = cleaned;
+          data.surveys[idx].questionGroups = JSON.parse(JSON.stringify(questionGroups));
+        }
+      } else {
+        data.surveys.push({
+          id: uid(),
+          title: title.trim(),
+          category,
+          description: description.trim(),
+          questions: cleaned,
+          questionGroups: JSON.parse(JSON.stringify(questionGroups)),
+          createdAt: new Date().toLocaleDateString('ko-KR'),
+          closed: false,
+        });
       }
-    } else {
-      data.surveys.push({
-        id: uid(),
-        title: title.trim(),
-        category,
-        description: description.trim(),
-        questions: cleaned,
-        questionGroups: JSON.parse(JSON.stringify(questionGroups)),
-        createdAt: new Date().toLocaleDateString('ko-KR'),
-        closed: false,
-      });
+      await saveData(data);
+      navigate('/');
+    } catch (e) {
+      console.error('설문 저장 실패:', e);
+      alert('설문 저장에 실패했습니다.\n' + (e.message || String(e)));
+    } finally {
+      setSaving(false);
     }
-    await saveData(data);
-    navigate('/');
   };
 
   const renderMediaItem = (qi, m, mi) => {
@@ -646,7 +656,7 @@ export default function SurveyCreate() {
 
       <div className="sticky-bottom-bar">
         <button className="btn btn-secondary" onClick={() => navigate('/')}>취소</button>
-        <button className="btn btn-success" onClick={saveSurvey}>설문 저장</button>
+        <button className="btn btn-success" onClick={saveSurvey} disabled={saving}>{saving ? '저장 중...' : '설문 저장'}</button>
       </div>
     </div>
   );
