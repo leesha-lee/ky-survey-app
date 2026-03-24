@@ -50,7 +50,7 @@ textarea { resize: vertical; min-height: 60px; }
 .lightbox-close { position: fixed; top: 16px; right: 24px; background: none; border: none; color: #fff; font-size: 36px; cursor: pointer; z-index: 1001; line-height: 1; }
 .media-preview video { max-width: 100%; max-height: 300px; border-radius: 8px; }
 .media-preview iframe { width: 100%; aspect-ratio: 16/9; border: none; border-radius: 8px; }
-.media-preview .link-card { display: flex; align-items: center; gap: 8px; padding: 14px 18px; background: #f0f2f5; border-radius: 8px; color: #4361ee; text-decoration: none; font-size: 14px; border: 1px solid #d1d5db; transition: .2s; width: 100%; }
+.media-preview .link-card { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px 18px; background: #f0f2f5; border-radius: 8px; color: #4361ee; text-decoration: none; font-size: 14px; border: 1px solid #d1d5db; transition: .2s; width: 100%; }
 .media-preview .link-card:hover { background: #e8eaff; border-color: #4361ee; }
 .upload-zone { border: 2px dashed #c7d2fe; border-radius: 8px; padding: 16px; text-align: center; cursor: pointer; transition: .2s; background: #fafaff; margin-bottom: 8px; position: relative; }
 .upload-zone:hover, .upload-zone.dragover { border-color: #4361ee; background: #eef0ff; }
