@@ -5,6 +5,23 @@ import { loadData, saveData } from '../lib/db';
 import { restoreBlobs } from '../lib/blob';
 import { esc, getYoutubeEmbedUrl, getSharePointEmbedUrl } from '../lib/utils';
 
+function RichText({ text }) {
+  if (!text) return null;
+  return (
+    <div className="survey-description">
+      {text.split('\n').map((line, li) => (
+        <p key={li}>
+          {line.split(/(\*\*[^*]+\*\*)/).map((seg, si) =>
+            seg.startsWith('**') && seg.endsWith('**')
+              ? <strong key={si}>{seg.slice(2, -2)}</strong>
+              : seg
+          )}
+        </p>
+      ))}
+    </div>
+  );
+}
+
 function MsIcon() {
   return (
     <svg viewBox="0 0 21 21" style={{ width: 20, height: 20 }}>
@@ -230,7 +247,7 @@ export default function SurveyTake() {
       <div className="page active">
         <div className="card">
           <h2>{survey.title}</h2>
-          <p style={{ color: '#6b7280', marginBottom: 20 }}>{survey.description || ''}</p>
+          <RichText text={survey.description} />
           <div className="login-required">
             <p>설문에 응답하려면 Microsoft 계정으로 로그인해야 합니다.</p>
             <button className="btn-ms-login" onClick={handleLoginAndRetry} style={{ fontSize: 15, padding: '10px 24px' }}>
@@ -251,7 +268,7 @@ export default function SurveyTake() {
       {lightbox && <ImageLightbox src={lightbox.src} alt={lightbox.alt} onClose={() => setLightbox(null)} />}
       <div className="card">
         <h2>{survey.title}</h2>
-        <p style={{ color: '#6b7280', marginBottom: 20 }}>{survey.description || ''}</p>
+        <RichText text={survey.description} />
 
         <div style={{ marginBottom: 16 }}>
           <span className="respondent-tag">

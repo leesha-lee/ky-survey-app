@@ -68,6 +68,12 @@ textarea { resize: vertical; min-height: 60px; }
 .survey-card h3 { margin: 0; font-size: 16px; }
 .survey-card .meta { color: #6b7280; font-size: 13px; }
 .survey-card .actions { display: flex; gap: 8px; flex-wrap: nowrap; }
+/* Survey description notice */
+.survey-description { background: #f0f4ff; border-left: 4px solid #4361ee; border-radius: 0 8px 8px 0; padding: 14px 18px; margin-bottom: 20px; color: #1e293b; font-size: 14px; line-height: 1.7; }
+.survey-description p { margin: 0; }
+.survey-description p:empty { height: 8px; }
+.survey-description p + p { margin-top: 4px; }
+.survey-description strong { color: #1a1a2e; font-weight: 700; }
 .take-q { margin-bottom: 24px; }
 .take-q .q-title { font-weight: 700; font-size: 15px; margin-bottom: 10px; }
 .take-q .q-title .required { color: #e63946; }
