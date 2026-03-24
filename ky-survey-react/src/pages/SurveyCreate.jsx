@@ -174,9 +174,13 @@ export default function SurveyCreate() {
   };
 
   const updateOptionEn = (qi, oi, value) => {
-    setQuestions(prev => prev.map((q, i) =>
-      i === qi ? { ...q, optionsEn: (q.optionsEn || []).map((o, j) => j === oi ? value : o) } : q
-    ));
+    setQuestions(prev => prev.map((q, i) => {
+      if (i !== qi) return q;
+      const arr = [...(q.optionsEn || [])];
+      while (arr.length < q.options.length) arr.push('');
+      arr[oi] = value;
+      return { ...q, optionsEn: arr };
+    }));
   };
 
   const addMedia = (qi, type) => {
