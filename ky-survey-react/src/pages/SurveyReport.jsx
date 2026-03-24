@@ -294,9 +294,13 @@ function QuestionReport({ q, qi, responses }) {
 
     const chartType = q.options.length > 5 ? 'bar' : 'doughnut';
 
+    const optEnMap = {};
+    if (q.optionsEn) q.options.forEach((o, oi) => { if (q.optionsEn[oi]) optEnMap[o] = q.optionsEn[oi]; });
+
     return (
       <div className="card">
         <h3>Q{qi + 1}. {q.title}</h3>
+        {q.titleEn && <div style={{ fontSize: 13, color: '#6b7280', marginTop: -8, marginBottom: 8 }}>{q.titleEn}</div>}
         <p style={{ color: '#6b7280', fontSize: 13, marginBottom: 14 }}>{typeLabel} &middot; 응답 {responses.length}건</p>
         <MediaDisplay mediaArr={q.media} />
         <div style={{ marginBottom: 14 }}>
@@ -305,7 +309,7 @@ function QuestionReport({ q, qi, responses }) {
             return (
               <div key={l} style={{ marginBottom: 8 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 3 }}>
-                  <span>{l}</span><span>{c}명 ({p}%)</span>
+                  <span>{l}{optEnMap[l] && <span style={{ color: '#9ca3af', marginLeft: 4 }}>/ {optEnMap[l]}</span>}</span><span>{c}명 ({p}%)</span>
                 </div>
                 <div className="progress-bar">
                   <div className="fill" style={{ width: `${p}%`, background: COLORS[i % COLORS.length] }}>
@@ -349,6 +353,7 @@ function QuestionReport({ q, qi, responses }) {
     return (
       <div className="card">
         <h3>Q{qi + 1}. {q.title}</h3>
+        {q.titleEn && <div style={{ fontSize: 13, color: '#6b7280', marginTop: -8, marginBottom: 8 }}>{q.titleEn}</div>}
         <p style={{ color: '#6b7280', fontSize: 13, marginBottom: 14 }}>{typeLabel} &middot; 응답 {responses.length}건</p>
         <MediaDisplay mediaArr={q.media} />
         <div className="stat-summary">
@@ -402,6 +407,7 @@ function QuestionReport({ q, qi, responses }) {
     return (
       <div className="card">
         <h3>Q{qi + 1}. {q.title}</h3>
+        {q.titleEn && <div style={{ fontSize: 13, color: '#6b7280', marginTop: -8, marginBottom: 8 }}>{q.titleEn}</div>}
         <p style={{ color: '#6b7280', fontSize: 13, marginBottom: 14 }}>{typeLabel} &middot; 응답 {responses.length}건</p>
         <MediaDisplay mediaArr={q.media} />
         <table className="response-table">

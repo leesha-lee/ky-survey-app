@@ -293,6 +293,7 @@ export default function SurveyTake() {
                 {grp && <span className="q-group-badge" style={{ background: grp.color }}>{grp.name}</span>}
                 Q{qi + 1}. {q.title}
                 {q.required && <span className="required"> *</span>}
+                {q.titleEn && <div style={{ fontSize: 13, color: '#6b7280', fontWeight: 400, marginTop: 2 }}>{q.titleEn}</div>}
               </div>
                 <MediaDisplay mediaArr={(q.media || []).filter(m => m.optionIndex == null)} onLightbox={setLightbox} />
 
@@ -300,6 +301,7 @@ export default function SurveyTake() {
                   <div className="radio-group">
                     {q.options.map((o, oi) => {
                       const optionMedia = (q.media || []).filter(m => m.optionIndex === oi && m.url);
+                      const oEn = (q.optionsEn || [])[oi];
                       return (
                         <label key={oi} className={optionMedia.length ? 'has-media' : ''}>
                           <input
@@ -310,7 +312,7 @@ export default function SurveyTake() {
                             onChange={() => setAnswer(qi, o)}
                           />
                           <div className="option-content">
-                            <span>{o}</span>
+                            <span>{o}{oEn && <span style={{ color: '#6b7280', fontSize: 13, marginLeft: 6 }}>/ {oEn}</span>}</span>
                             {optionMedia.length > 0 && (
                               <div className="option-media">
                                 <ImageCarousel
@@ -330,6 +332,7 @@ export default function SurveyTake() {
                   <div className="check-group">
                     {q.options.map((o, oi) => {
                       const optionMedia = (q.media || []).filter(m => m.optionIndex === oi && m.url);
+                      const oEn = (q.optionsEn || [])[oi];
                       return (
                         <label key={oi} className={optionMedia.length ? 'has-media' : ''}>
                           <input
@@ -340,7 +343,7 @@ export default function SurveyTake() {
                             onChange={() => toggleCheckbox(qi, o)}
                           />
                           <div className="option-content">
-                            <span>{o}</span>
+                            <span>{o}{oEn && <span style={{ color: '#6b7280', fontSize: 13, marginLeft: 6 }}>/ {oEn}</span>}</span>
                             {optionMedia.length > 0 && (
                               <div className="option-media">
                                 <ImageCarousel
@@ -373,8 +376,8 @@ export default function SurveyTake() {
                       ))}
                     </div>
                     <div className="scale-labels">
-                      <span>{q.labelMin}</span>
-                      <span>{q.labelMax}</span>
+                      <span>{q.labelMin}{q.labelMinEn && <span style={{ color: '#6b7280', fontSize: 12, marginLeft: 4 }}>/ {q.labelMinEn}</span>}</span>
+                      <span>{q.labelMax}{q.labelMaxEn && <span style={{ color: '#6b7280', fontSize: 12, marginLeft: 4 }}>/ {q.labelMaxEn}</span>}</span>
                     </div>
                   </>
                 )}

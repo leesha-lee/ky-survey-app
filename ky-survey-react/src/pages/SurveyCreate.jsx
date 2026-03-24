@@ -135,9 +135,9 @@ export default function SurveyCreate() {
   };
 
   const addQuestion = (type) => {
-    const q = { id: uid(), type, title: '', required: true, options: [], media: [], group: '' };
-    if (type === 'radio' || type === 'checkbox') q.options = ['옵션 1', '옵션 2'];
-    if (type === 'scale') { q.scaleMin = 1; q.scaleMax = 5; q.labelMin = '매우 불만족'; q.labelMax = '매우 만족'; }
+    const q = { id: uid(), type, title: '', titleEn: '', required: true, options: [], optionsEn: [], media: [], group: '' };
+    if (type === 'radio' || type === 'checkbox') { q.options = ['옵션 1', '옵션 2']; q.optionsEn = ['', '']; }
+    if (type === 'scale') { q.scaleMin = 1; q.scaleMax = 5; q.labelMin = '매우 불만족'; q.labelMax = '매우 만족'; q.labelMinEn = ''; q.labelMaxEn = ''; }
     setQuestions(prev => [...prev, q]);
   };
 
@@ -157,19 +157,25 @@ export default function SurveyCreate() {
 
   const addOption = (qi) => {
     setQuestions(prev => prev.map((q, i) =>
-      i === qi ? { ...q, options: [...q.options, '옵션 ' + (q.options.length + 1)] } : q
+      i === qi ? { ...q, options: [...q.options, '옵션 ' + (q.options.length + 1)], optionsEn: [...(q.optionsEn || []), ''] } : q
     ));
   };
 
   const removeOption = (qi, oi) => {
     setQuestions(prev => prev.map((q, i) =>
-      i === qi ? { ...q, options: q.options.filter((_, j) => j !== oi) } : q
+      i === qi ? { ...q, options: q.options.filter((_, j) => j !== oi), optionsEn: (q.optionsEn || []).filter((_, j) => j !== oi) } : q
     ));
   };
 
   const updateOption = (qi, oi, value) => {
     setQuestions(prev => prev.map((q, i) =>
       i === qi ? { ...q, options: q.options.map((o, j) => j === oi ? value : o) } : q
+    ));
+  };
+
+  const updateOptionEn = (qi, oi, value) => {
+    setQuestions(prev => prev.map((q, i) =>
+      i === qi ? { ...q, optionsEn: (q.optionsEn || []).map((o, j) => j === oi ? value : o) } : q
     ));
   };
 
@@ -505,6 +511,13 @@ export default function SurveyCreate() {
           onChange={(e) => updateQuestion(qi, { title: e.target.value })}
           placeholder="질문을 입력하세요"
         />
+        <input
+          type="text"
+          value={q.titleEn || ''}
+          onChange={(e) => updateQuestion(qi, { titleEn: e.target.value })}
+          placeholder="Question title in English (optional)"
+          style={{ marginTop: -6, fontSize: 13, color: '#6b7280' }}
+        />
         <label style={{ fontWeight: 400 }}>
           <input
             type="checkbox"
@@ -519,12 +532,20 @@ export default function SurveyCreate() {
         {(q.type === 'radio' || q.type === 'checkbox') && (
           <>
             {q.options.map((o, oi) => (
-              <div className="option-row" key={oi}>
+              <div className="option-row" key={oi} style={{ flexWrap: 'wrap' }}>
                 <input
                   type="text"
                   value={o}
                   onChange={(e) => updateOption(qi, oi, e.target.value)}
                   placeholder="옵션"
+                  style={{ flex: 1, minWidth: 120 }}
+                />
+                <input
+                  type="text"
+                  value={(q.optionsEn || [])[oi] || ''}
+                  onChange={(e) => updateOptionEn(qi, oi, e.target.value)}
+                  placeholder="English (optional)"
+                  style={{ flex: 1, minWidth: 120, fontSize: 13, color: '#6b7280' }}
                 />
                 <button className="btn btn-danger btn-sm" onClick={() => removeOption(qi, oi)}>&times;</button>
               </div>
@@ -547,10 +568,12 @@ export default function SurveyCreate() {
             <div>
               <label>최소 라벨</label>
               <input type="text" value={q.labelMin} onChange={(e) => updateQuestion(qi, { labelMin: e.target.value })} />
+              <input type="text" value={q.labelMinEn || ''} onChange={(e) => updateQuestion(qi, { labelMinEn: e.target.value })} placeholder="English (optional)" style={{ marginTop: -6, fontSize: 13, color: '#6b7280' }} />
             </div>
             <div>
               <label>최대 라벨</label>
               <input type="text" value={q.labelMax} onChange={(e) => updateQuestion(qi, { labelMax: e.target.value })} />
+              <input type="text" value={q.labelMaxEn || ''} onChange={(e) => updateQuestion(qi, { labelMaxEn: e.target.value })} placeholder="English (optional)" style={{ marginTop: -6, fontSize: 13, color: '#6b7280' }} />
             </div>
           </div>
         )}
