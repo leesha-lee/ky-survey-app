@@ -142,6 +142,7 @@ export default function SurveyReport() {
       <div className="card no-print">
         <div className="flex-between">
           <h2>{survey.title} - 통계 리포트</h2>
+          {survey.titleEn && <div style={{ fontSize: 14, color: '#6b7280', marginTop: -8, marginBottom: 8 }}>{survey.titleEn}</div>}
           <div>
             <button className="btn btn-outline btn-sm" onClick={() => window.print()}>인쇄 / PDF</button>
             <button className="btn btn-outline btn-sm" onClick={exportCSV} style={{ marginLeft: 4 }}>CSV 내보내기</button>

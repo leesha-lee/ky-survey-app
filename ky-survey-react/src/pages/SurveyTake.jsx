@@ -247,6 +247,7 @@ export default function SurveyTake() {
       <div className="page active">
         <div className="card">
           <h2>{survey.title}</h2>
+          {survey.titleEn && <div style={{ fontSize: 15, color: '#6b7280', marginTop: -8, marginBottom: 8 }}>{survey.titleEn}</div>}
           <RichText text={survey.description} />
           <div className="login-required">
             <p>설문에 응답하려면 Microsoft 계정으로 로그인해야 합니다.</p>
@@ -268,6 +269,7 @@ export default function SurveyTake() {
       {lightbox && <ImageLightbox src={lightbox.src} alt={lightbox.alt} onClose={() => setLightbox(null)} />}
       <div className="card">
         <h2>{survey.title}</h2>
+        {survey.titleEn && <div style={{ fontSize: 15, color: '#6b7280', marginTop: -8, marginBottom: 8 }}>{survey.titleEn}</div>}
         <RichText text={survey.description} />
 
         <div style={{ marginBottom: 16 }}>

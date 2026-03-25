@@ -32,6 +32,7 @@ export default function SurveyCard({ survey, responseCount, currentUser, isAdmin
             </span>
           )}
         </h3>
+        {s.titleEn && <div style={{ fontSize: 13, color: '#6b7280', marginTop: -4, marginBottom: 4 }}>{s.titleEn}</div>}
         <div className="meta">
           {s.questions.length}개 질문 &middot; {responseCount}건 응답 &middot; {s.createdAt}
         </div>

@@ -82,6 +82,7 @@ export default function SurveyCreate() {
   const { currentUser, msalInstance } = useAuth();
 
   const [title, setTitle] = useState('');
+  const [titleEn, setTitleEn] = useState('');
   const [category, setCategory] = useState('');
   const [description, setDescription] = useState('');
   const [questions, setQuestions] = useState([]);
@@ -93,6 +94,7 @@ export default function SurveyCreate() {
     if (!editId) {
       // Reset form for create mode
       setTitle('');
+      setTitleEn('');
       setCategory('');
       setDescription('');
       setQuestions([]);
@@ -104,6 +106,7 @@ export default function SurveyCreate() {
       const s = data.surveys.find(x => x.id === editId);
       if (!s) return;
       setTitle(s.title);
+      setTitleEn(s.titleEn || '');
       setCategory(s.category || '');
       setDescription(s.description || '');
       const restored = await restoreBlobs(s.questions);
@@ -317,6 +320,7 @@ export default function SurveyCreate() {
         if (idx >= 0) {
           await deleteSurveyBlobs(data.surveys[idx].questions);
           data.surveys[idx].title = title.trim();
+          data.surveys[idx].titleEn = titleEn.trim();
           data.surveys[idx].category = category;
           data.surveys[idx].description = description.trim();
           data.surveys[idx].questions = cleaned;
@@ -326,6 +330,7 @@ export default function SurveyCreate() {
         data.surveys.push({
           id: uid(),
           title: title.trim(),
+          titleEn: titleEn.trim(),
           category,
           description: description.trim(),
           questions: cleaned,
@@ -613,6 +618,7 @@ export default function SurveyCreate() {
         <h2>{editId ? '설문 수정' : '새 설문 만들기'}</h2>
         <label>설문 제목 *</label>
         <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="예: 고객 만족도 조사" />
+        <input type="text" value={titleEn} onChange={(e) => setTitleEn(e.target.value)} placeholder="Survey title in English (optional)" style={{ marginTop: -6, fontSize: 13, color: '#6b7280' }} />
         <label>카테고리 *</label>
         <select value={category} onChange={(e) => setCategory(e.target.value)}>
           <option value="">-- 카테고리 선택 --</option>
