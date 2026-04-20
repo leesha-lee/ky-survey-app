@@ -376,8 +376,7 @@ export default function SurveyReport() {
                         <td>{new Date(r.submittedAt).toLocaleString('ko-KR')}</td>
                         {questions.map((q, qi) => {
                           const a = r.answers[qi];
-                          const textStyle = q.type === 'text' ? { whiteSpace: 'normal', wordBreak: 'break-word' } : {};
-                          return <td key={qi} style={textStyle}>{Array.isArray(a) ? a.join(', ') : (a || '-')}</td>;
+                          return <td key={qi} className={q.type === 'text' ? 'td-text' : ''}>{Array.isArray(a) ? a.join(', ') : (a || '-')}</td>;
                         })}
                         <td className="no-print">
                           <button className="btn btn-danger btn-sm" onClick={() => deleteResponse(realIndex)}>삭제</button>

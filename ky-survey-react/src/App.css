@@ -99,8 +99,10 @@ textarea { resize: vertical; min-height: 60px; }
 .response-table th, .response-table td { padding: 8px 12px; border-bottom: 1px solid #e5e7eb; text-align: left; }
 .response-table th { background: #f8f9ff; font-weight: 700; }
 .raw-table-wrap { overflow-x: auto; max-width: 100%; }
-.raw-data-table { width: max-content; min-width: 100%; }
-.raw-data-table th, .raw-data-table td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.raw-data-table { min-width: 100%; }
+.raw-data-table th { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.raw-data-table td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.raw-data-table td.td-text { white-space: normal; word-break: break-word; max-width: 500px; }
 .raw-data-table th { position: relative; }
 .raw-data-table tbody tr:hover td { background: #f8f9ff !important; }
 .col-resize { position: absolute; right: 0; top: 0; bottom: 0; width: 5px; cursor: col-resize; background: transparent; z-index: 4; }
