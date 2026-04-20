@@ -5,7 +5,7 @@ import { idbGet, idbPut, idbDelete } from './db';
 const MAX_BLOB_BYTES = 900 * 1024;
 
 // Compress image via Canvas, ensuring result fits Firestore limit
-function compressImage(dataUrl) {
+export function compressImage(dataUrl) {
   return new Promise((resolve) => {
     const img = new Image();
     img.onload = () => {
