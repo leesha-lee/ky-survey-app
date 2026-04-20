@@ -98,6 +98,13 @@ textarea { resize: vertical; min-height: 60px; }
 .response-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 12px; }
 .response-table th, .response-table td { padding: 8px 12px; border-bottom: 1px solid #e5e7eb; text-align: left; }
 .response-table th { background: #f8f9ff; font-weight: 700; }
+.raw-table-wrap { overflow-x: auto; max-width: 100%; }
+.raw-data-table { table-layout: fixed; }
+.raw-data-table th, .raw-data-table td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.raw-data-table th { position: relative; }
+.raw-data-table tbody tr:hover td { background: #f8f9ff !important; }
+.col-resize { position: absolute; right: 0; top: 0; bottom: 0; width: 5px; cursor: col-resize; background: transparent; z-index: 4; }
+.col-resize:hover { background: #4361ee; }
 .progress-bar { background: #e5e7eb; border-radius: 6px; height: 22px; overflow: hidden; position: relative; }
 .progress-bar .fill { height: 100%; border-radius: 6px; transition: width .4s; display: flex; align-items: center; padding: 0 8px; color: #fff; font-size: 12px; font-weight: 600; }
 @media print { nav, .no-print { display: none !important; } .page { display: block !important; max-width: 100%; } .card { break-inside: avoid; } }
@@ -201,7 +208,8 @@ textarea { resize: vertical; min-height: 60px; }
 .btn-ad { background: #0078d4; color: #fff; border: none; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; transition: .2s; display: inline-flex; align-items: center; gap: 5px; }
 .btn-ad:hover { background: #106ebe; }
 .btn-ad svg { width: 14px; height: 14px; }
-.dept-filter { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+.report-filters { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+.dept-filter { display: flex; align-items: center; gap: 10px; margin-bottom: 0; flex-wrap: wrap; }
 .dept-filter select { margin-bottom: 0; max-width: 300px; }
 .dept-filter label { font-weight: 600; font-size: 14px; margin-bottom: 0; white-space: nowrap; }
 .ad-dept-loading { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: #6b7280; padding: 6px 12px; background: #f0f2f5; border-radius: 8px; }

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Bar, Doughnut } from 'react-chartjs-2';
 import {
@@ -54,6 +54,9 @@ export default function SurveyReport() {
   const [allResponses, setAllResponses] = useState([]);
   const [questions, setQuestions] = useState([]);
   const [deptFilter, setDeptFilter] = useState('');
+  const [qFilterIdx, setQFilterIdx] = useState('');
+  const [aFilter, setAFilter] = useState('');
+  const [colWidths, setColWidths] = useState({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -79,13 +82,78 @@ export default function SurveyReport() {
     return d;
   }, [allResponses]);
 
-  const responses = useMemo(() => {
-    if (!deptFilter) return allResponses;
-    return allResponses.filter(r => {
-      const d = (r.respondent && r.respondent.department) ? r.respondent.department : '(미지정)';
-      return d === deptFilter;
+  const choiceQuestions = useMemo(() => {
+    return questions
+      .map((q, i) => ({ q, i }))
+      .filter(({ q }) => q.type === 'radio' || q.type === 'checkbox');
+  }, [questions]);
+
+  const answerOptions = useMemo(() => {
+    if (qFilterIdx === '') return [];
+    const qi = Number(qFilterIdx);
+    const q = questions[qi];
+    if (!q) return [];
+    const opts = new Set();
+    allResponses.forEach(r => {
+      const a = r.answers[qi];
+      if (Array.isArray(a)) a.forEach(v => opts.add(v));
+      else if (a) opts.add(a);
     });
-  }, [allResponses, deptFilter]);
+    return [...opts];
+  }, [qFilterIdx, questions, allResponses]);
+
+  const responses = useMemo(() => {
+    let filtered = allResponses;
+    if (deptFilter) {
+      filtered = filtered.filter(r => {
+        const d = (r.respondent && r.respondent.department) ? r.respondent.department : '(미지정)';
+        return d === deptFilter;
+      });
+    }
+    if (qFilterIdx !== '' && aFilter) {
+      const qi = Number(qFilterIdx);
+      filtered = filtered.filter(r => {
+        const a = r.answers[qi];
+        if (Array.isArray(a)) return a.includes(aFilter);
+        return a === aFilter;
+      });
+    }
+    return filtered;
+  }, [allResponses, deptFilter, qFilterIdx, aFilter]);
+
+  const STICKY_DEFAULTS = [40, 80, 130, 90];
+  const getLeft = (ci) => {
+    let l = 0;
+    for (let i = 0; i < ci && i < 4; i++) l += colWidths[i] ?? STICKY_DEFAULTS[i];
+    return l;
+  };
+  const stickyTh = (ci) => ({
+    position: 'sticky', left: getLeft(ci), zIndex: 3, background: '#f8f9ff',
+    minWidth: STICKY_DEFAULTS[ci],
+  });
+  const stickyTd = (ci) => ({
+    position: 'sticky', left: getLeft(ci), zIndex: 1, background: '#fff',
+  });
+
+  const startColResize = useCallback((colIdx, e) => {
+    e.preventDefault();
+    const th = e.target.closest('th');
+    const startX = e.clientX;
+    const startW = th.offsetWidth;
+    const onMove = (ev) => {
+      setColWidths(prev => ({ ...prev, [colIdx]: Math.max(30, startW + ev.clientX - startX) }));
+    };
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }, []);
 
   const deleteResponse = async (ri) => {
     const rsp = allResponses[ri]?.respondent;
@@ -149,22 +217,49 @@ export default function SurveyReport() {
             <button className="btn btn-secondary btn-sm" onClick={() => navigate('/')} style={{ marginLeft: 4 }}>돌아가기</button>
           </div>
         </div>
-        {Object.keys(deptSet).length > 1 && (
-          <div className="dept-filter">
-            <label>부서 필터:</label>
-            <select value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)}>
-              <option value="">전체 부서</option>
-              {Object.entries(deptSet).sort((a, b) => b[1] - a[1]).map(([d, c]) => (
-                <option key={d} value={d}>{d} ({c}명)</option>
-              ))}
-            </select>
-            {deptFilter && (
+        <div className="report-filters">
+          {Object.keys(deptSet).length > 1 && (
+            <div className="dept-filter">
+              <label>부서 필터:</label>
+              <select value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)}>
+                <option value="">전체 부서</option>
+                {Object.entries(deptSet).sort((a, b) => b[1] - a[1]).map(([d, c]) => (
+                  <option key={d} value={d}>{d} ({c}명)</option>
+                ))}
+              </select>
+            </div>
+          )}
+          {choiceQuestions.length > 0 && (
+            <div className="dept-filter">
+              <label>답변 필터:</label>
+              <select value={qFilterIdx} onChange={(e) => { setQFilterIdx(e.target.value); setAFilter(''); }}>
+                <option value="">질문 선택</option>
+                {choiceQuestions.map(({ q, i }) => (
+                  <option key={i} value={i}>Q{i + 1}. {q.title}</option>
+                ))}
+              </select>
+              {qFilterIdx !== '' && (
+                <select value={aFilter} onChange={(e) => setAFilter(e.target.value)}>
+                  <option value="">전체 답변</option>
+                  {answerOptions.map(opt => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
+              )}
+            </div>
+          )}
+          {(deptFilter || aFilter) && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ fontSize: 13, color: '#6b7280' }}>
-                {responses.length}건 / 전체 {allResponses.length}건
+                필터 결과: {responses.length}건 / 전체 {allResponses.length}건
               </span>
-            )}
-          </div>
-        )}
+              <button
+                className="btn btn-outline btn-sm"
+                onClick={() => { setDeptFilter(''); setQFilterIdx(''); setAFilter(''); }}
+              >필터 초기화</button>
+            </div>
+          )}
+        </div>
       </div>
 
       {!responses.length ? (
@@ -241,25 +336,39 @@ export default function SurveyReport() {
           {/* Full response table */}
           <div className="card">
             <h3>전체 응답 데이터</h3>
-            <div style={{ overflowX: 'auto' }}>
-              <table className="response-table">
+            <div className="raw-table-wrap">
+              <table className="response-table raw-data-table">
                 <thead>
                   <tr>
-                    <th>#</th><th>응답자</th><th>이메일</th><th>부서</th><th>제출일시</th>
-                    {questions.map((q, qi) => <th key={qi}>Q{qi + 1}</th>)}
+                    {['#', '응답자', '이메일', '부서'].map((label, ci) => (
+                      <th key={ci} style={{ ...stickyTh(ci), width: colWidths[ci] }}>
+                        {label}<div className="col-resize" onMouseDown={e => startColResize(ci, e)} />
+                      </th>
+                    ))}
+                    <th style={{ width: colWidths[4], minWidth: 140 }}>
+                      제출일시<div className="col-resize" onMouseDown={e => startColResize(4, e)} />
+                    </th>
+                    {questions.map((q, qi) => {
+                      const ci = 5 + qi;
+                      return (
+                        <th key={qi} style={{ width: colWidths[ci], minWidth: q.type === 'text' ? 10 : undefined }}>
+                          Q{qi + 1}<div className="col-resize" onMouseDown={e => startColResize(ci, e)} />
+                        </th>
+                      );
+                    })}
                     <th className="no-print">관리</th>
                   </tr>
                 </thead>
                 <tbody>
                   {responses.map((r, ri) => {
                     const rsp = r.respondent || {};
-                    const realIndex = deptFilter ? allResponses.indexOf(r) : ri;
+                    const realIndex = (deptFilter || aFilter) ? allResponses.indexOf(r) : ri;
                     return (
                       <tr key={ri}>
-                        <td>{ri + 1}</td>
-                        <td>{rsp.name || '익명'}</td>
-                        <td>{rsp.email || '-'}</td>
-                        <td>{rsp.department || '-'}</td>
+                        <td style={stickyTd(0)}>{ri + 1}</td>
+                        <td style={stickyTd(1)}>{rsp.name || '익명'}</td>
+                        <td style={stickyTd(2)}>{rsp.email || '-'}</td>
+                        <td style={stickyTd(3)}>{rsp.department || '-'}</td>
                         <td>{new Date(r.submittedAt).toLocaleString('ko-KR')}</td>
                         {questions.map((q, qi) => {
                           const a = r.answers[qi];
