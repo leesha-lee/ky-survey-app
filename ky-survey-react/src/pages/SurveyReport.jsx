@@ -127,12 +127,14 @@ export default function SurveyReport() {
     for (let i = 0; i < ci && i < 4; i++) l += colWidths[i] ?? STICKY_DEFAULTS[i];
     return l;
   };
+  const stickyW = (ci) => colWidths[ci] ?? STICKY_DEFAULTS[ci];
   const stickyTh = (ci) => ({
     position: 'sticky', left: getLeft(ci), zIndex: 3, background: '#f8f9ff',
-    minWidth: STICKY_DEFAULTS[ci],
+    width: stickyW(ci), minWidth: stickyW(ci), maxWidth: stickyW(ci),
   });
   const stickyTd = (ci) => ({
     position: 'sticky', left: getLeft(ci), zIndex: 1, background: '#fff',
+    width: stickyW(ci), minWidth: stickyW(ci), maxWidth: stickyW(ci),
   });
 
   const startColResize = useCallback((colIdx, e) => {
@@ -350,7 +352,7 @@ export default function SurveyReport() {
                     </th>
                     {questions.map((q, qi) => {
                       const ci = 5 + qi;
-                      const mw = q.type === 'text' ? 200 : q.type === 'scale' ? 60 : 120;
+                      const mw = q.type === 'text' ? 100 : q.type === 'scale' ? 60 : 120;
                       return (
                         <th key={qi} style={{ width: colWidths[ci], minWidth: mw }}>
                           Q{qi + 1}<div className="col-resize" onMouseDown={e => startColResize(ci, e)} />
