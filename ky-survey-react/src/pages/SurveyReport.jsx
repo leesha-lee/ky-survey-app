@@ -350,8 +350,9 @@ export default function SurveyReport() {
                     </th>
                     {questions.map((q, qi) => {
                       const ci = 5 + qi;
+                      const mw = q.type === 'text' ? 200 : q.type === 'scale' ? 60 : 120;
                       return (
-                        <th key={qi} style={{ width: colWidths[ci], minWidth: q.type === 'text' ? 10 : undefined }}>
+                        <th key={qi} style={{ width: colWidths[ci], minWidth: mw }}>
                           Q{qi + 1}<div className="col-resize" onMouseDown={e => startColResize(ci, e)} />
                         </th>
                       );
