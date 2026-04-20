@@ -339,28 +339,35 @@ export default function SurveyReport() {
           <div className="card">
             <h3>전체 응답 데이터</h3>
             <div className="raw-table-wrap">
-              <table className="response-table raw-data-table">
+              {(() => {
+                const cw = [
+                  colWidths[0] ?? 40, colWidths[1] ?? 80, colWidths[2] ?? 130, colWidths[3] ?? 90,
+                  colWidths[4] ?? 140,
+                  ...questions.map((q, qi) => colWidths[5 + qi] ?? (q.type === 'text' ? 500 : q.type === 'scale' ? 60 : 120)),
+                  70,
+                ];
+                const totalW = cw.reduce((a, b) => a + b, 0);
+                return (
+              <table className="response-table raw-data-table" style={{ width: totalW }}>
                 <thead>
                   <tr>
                     {['#', '응답자', '이메일', '부서'].map((label, ci) => (
-                      <th key={ci} style={{ ...stickyTh(ci), width: colWidths[ci] }}>
+                      <th key={ci} style={{ ...stickyTh(ci), width: cw[ci] }}>
                         {label}<div className="col-resize" onMouseDown={e => startColResize(ci, e)} />
                       </th>
                     ))}
-                    <th style={{ width: colWidths[4], minWidth: 140 }}>
+                    <th style={{ width: cw[4] }}>
                       제출일시<div className="col-resize" onMouseDown={e => startColResize(4, e)} />
                     </th>
                     {questions.map((q, qi) => {
                       const ci = 5 + qi;
-                      const isText = q.type === 'text';
-                      const mw = isText ? 500 : q.type === 'scale' ? 60 : 120;
                       return (
-                        <th key={qi} style={{ width: colWidths[ci] ?? (isText ? 500 : undefined), minWidth: mw }}>
+                        <th key={qi} style={{ width: cw[ci] }}>
                           Q{qi + 1}<div className="col-resize" onMouseDown={e => startColResize(ci, e)} />
                         </th>
                       );
                     })}
-                    <th className="no-print">관리</th>
+                    <th className="no-print" style={{ width: 70 }}>관리</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -386,6 +393,8 @@ export default function SurveyReport() {
                   })}
                 </tbody>
               </table>
+                );
+              })()}
             </div>
           </div>
         </>
