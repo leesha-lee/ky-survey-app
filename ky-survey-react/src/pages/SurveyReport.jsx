@@ -352,9 +352,10 @@ export default function SurveyReport() {
                     </th>
                     {questions.map((q, qi) => {
                       const ci = 5 + qi;
-                      const mw = q.type === 'text' ? 100 : q.type === 'scale' ? 60 : 120;
+                      const isText = q.type === 'text';
+                      const mw = isText ? 200 : q.type === 'scale' ? 60 : 120;
                       return (
-                        <th key={qi} style={{ width: colWidths[ci], minWidth: mw }}>
+                        <th key={qi} style={{ width: colWidths[ci] ?? (isText ? 200 : undefined), minWidth: mw }}>
                           Q{qi + 1}<div className="col-resize" onMouseDown={e => startColResize(ci, e)} />
                         </th>
                       );
@@ -375,7 +376,8 @@ export default function SurveyReport() {
                         <td>{new Date(r.submittedAt).toLocaleString('ko-KR')}</td>
                         {questions.map((q, qi) => {
                           const a = r.answers[qi];
-                          return <td key={qi}>{Array.isArray(a) ? a.join(', ') : (a || '-')}</td>;
+                          const textStyle = q.type === 'text' ? { whiteSpace: 'normal', wordBreak: 'break-word' } : {};
+                          return <td key={qi} style={textStyle}>{Array.isArray(a) ? a.join(', ') : (a || '-')}</td>;
                         })}
                         <td className="no-print">
                           <button className="btn btn-danger btn-sm" onClick={() => deleteResponse(realIndex)}>삭제</button>
