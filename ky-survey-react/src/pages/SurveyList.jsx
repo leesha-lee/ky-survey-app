@@ -75,12 +75,27 @@ function Confetti() {
 }
 
 function NoticeBanner({ notice, admin, onEdit, onDelete, onToggle }) {
-  const [imgSrc, setImgSrc] = useState(null);
-  const [lightbox, setLightbox] = useState(false);
+  const [images, setImages] = useState([]);
+  const [lightbox, setLightbox] = useState(null);
 
   useEffect(() => {
-    if (!notice.imageKey) { setImgSrc(notice.imageUrl || null); return; }
-    idbGet('blobs', notice.imageKey).then(url => setImgSrc(url || notice.imageUrl || null));
+    async function loadImages() {
+      const srcs = [];
+      if (notice.imageKeys && notice.imageKeys.length > 0) {
+        for (const key of notice.imageKeys) {
+          const url = await idbGet('blobs', key);
+          if (url) srcs.push(url);
+        }
+      } else if (notice.imageKey) {
+        const url = await idbGet('blobs', notice.imageKey);
+        if (url) srcs.push(url);
+        else if (notice.imageUrl) srcs.push(notice.imageUrl);
+      } else if (notice.imageUrl) {
+        srcs.push(notice.imageUrl);
+      }
+      setImages(srcs);
+    }
+    loadImages();
   }, [notice]);
 
   return (
@@ -93,21 +108,24 @@ function NoticeBanner({ notice, admin, onEdit, onDelete, onToggle }) {
             {notice.content.split('\n').map((line, i) => <p key={i}>{line || '\u00A0'}</p>)}
           </div>
         )}
-        {imgSrc && (
-          <>
-            <img
-              src={imgSrc}
-              alt="공지 이미지"
-              className="notice-img"
-              onClick={() => setLightbox(true)}
-            />
-            {lightbox && (
-              <div className="lightbox-overlay" onClick={() => setLightbox(false)}>
-                <button className="lightbox-close" onClick={() => setLightbox(false)}>&times;</button>
-                <img src={imgSrc} alt="공지 이미지" className="lightbox-img" onClick={e => e.stopPropagation()} />
-              </div>
-            )}
-          </>
+        {images.length > 0 && (
+          <div className="notice-img-grid">
+            {images.map((src, i) => (
+              <img
+                key={i}
+                src={src}
+                alt={`공지 이미지 ${i + 1}`}
+                className="notice-img"
+                onClick={() => setLightbox(src)}
+              />
+            ))}
+          </div>
+        )}
+        {lightbox && (
+          <div className="lightbox-overlay" onClick={() => setLightbox(null)}>
+            <button className="lightbox-close" onClick={() => setLightbox(null)}>&times;</button>
+            <img src={lightbox} alt="공지 이미지" className="lightbox-img" onClick={e => e.stopPropagation()} />
+          </div>
         )}
         {admin && (
           <div className="notice-actions">
@@ -124,34 +142,67 @@ function NoticeBanner({ notice, admin, onEdit, onDelete, onToggle }) {
 function NoticeForm({ initial, onSave, onCancel }) {
   const [title, setTitle] = useState(initial?.title || '');
   const [content, setContent] = useState(initial?.content || '');
-  const [preview, setPreview] = useState(null);
-  const [imageFile, setImageFile] = useState(null);
+  const [previews, setPreviews] = useState([]);
+  const [newImages, setNewImages] = useState([]);
+  const [keepKeys, setKeepKeys] = useState([]);
   const fileRef = useRef(null);
 
   useEffect(() => {
     if (!initial) return;
-    if (initial.imageKey) {
-      idbGet('blobs', initial.imageKey).then(url => setPreview(url || null));
-    } else if (initial.imageUrl) {
-      setPreview(initial.imageUrl);
+    async function loadExisting() {
+      const srcs = [];
+      const keys = [];
+      if (initial.imageKeys && initial.imageKeys.length > 0) {
+        for (const key of initial.imageKeys) {
+          const url = await idbGet('blobs', key);
+          if (url) { srcs.push(url); keys.push(key); }
+        }
+      } else if (initial.imageKey) {
+        const url = await idbGet('blobs', initial.imageKey);
+        if (url) { srcs.push(url); keys.push(initial.imageKey); }
+        else if (initial.imageUrl) { srcs.push(initial.imageUrl); }
+      } else if (initial.imageUrl) {
+        srcs.push(initial.imageUrl);
+      }
+      setPreviews(srcs);
+      setKeepKeys(keys);
     }
+    loadExisting();
   }, [initial]);
 
-  const handleFile = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const compressed = await compressImage(reader.result);
-      setPreview(compressed);
-      setImageFile(compressed);
-    };
-    reader.readAsDataURL(file);
+  const handleFiles = (e) => {
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
+    files.forEach(file => {
+      if (!file.type.startsWith('image/')) return;
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const compressed = await compressImage(reader.result);
+        setPreviews(prev => [...prev, compressed]);
+        setNewImages(prev => [...prev, compressed]);
+      };
+      reader.readAsDataURL(file);
+    });
+    e.target.value = '';
+  };
+
+  const removeImage = (idx) => {
+    const removed = previews[idx];
+    setPreviews(prev => prev.filter((_, i) => i !== idx));
+    const keyIdx = keepKeys.findIndex((_, ki) => {
+      return idx < keepKeys.length && ki === idx;
+    });
+    if (idx < keepKeys.length) {
+      setKeepKeys(prev => prev.filter((_, i) => i !== idx));
+    } else {
+      const newIdx = idx - keepKeys.length;
+      setNewImages(prev => prev.filter((_, i) => i !== newIdx));
+    }
   };
 
   const handleSave = () => {
     if (!title.trim()) { alert('제목을 입력해 주세요.'); return; }
-    onSave({ title: title.trim(), content: content.trim(), imageData: imageFile, removeImage: !preview && !imageFile });
+    onSave({ title: title.trim(), content: content.trim(), newImages, keepKeys });
   };
 
   return (
@@ -161,13 +212,21 @@ function NoticeForm({ initial, onSave, onCancel }) {
       <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="예: 3월 설문 리워드 당첨자 발표!" />
       <label>내용</label>
       <textarea value={content} onChange={e => setContent(e.target.value)} rows={4} placeholder="당첨자 명단, 축하 메시지 등" />
-      <label>이미지</label>
+      <label>이미지 {previews.length > 0 && <span style={{ color: '#2ec4b6', fontWeight: 400 }}>({previews.length}개)</span>}</label>
+      {previews.length > 0 && (
+        <div className="notice-img-grid notice-img-grid-edit">
+          {previews.map((src, idx) => (
+            <div key={idx} className="notice-img-thumb">
+              <img src={src} alt="" />
+              <button onClick={() => removeImage(idx)}>&times;</button>
+            </div>
+          ))}
+        </div>
+      )}
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 14 }}>
-        <button className="btn btn-outline btn-sm" onClick={() => fileRef.current?.click()}>이미지 선택</button>
-        {preview && <button className="btn btn-outline btn-sm" onClick={() => { setPreview(null); setImageFile(null); }}>이미지 제거</button>}
-        <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFile} />
+        <button className="btn btn-outline btn-sm" onClick={() => fileRef.current?.click()}>이미지 추가</button>
+        <input ref={fileRef} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={handleFiles} />
       </div>
-      {preview && <img src={preview} alt="미리보기" style={{ maxWidth: '100%', maxHeight: 200, borderRadius: 8, marginBottom: 14, border: '1px solid #e5e7eb' }} />}
       <div style={{ display: 'flex', gap: 8 }}>
         <button className="btn btn-primary" onClick={handleSave}>저장</button>
         <button className="btn btn-secondary" onClick={onCancel}>취소</button>
@@ -196,7 +255,7 @@ export default function SurveyList() {
     }
   }, [notices.length > 0]);
 
-  const handleSaveNotice = useCallback(async ({ title, content, imageData, removeImage }) => {
+  const handleSaveNotice = useCallback(async ({ title, content, newImages, keepKeys }) => {
     const d = await loadData();
     if (!d.notices) d.notices = [];
 
@@ -205,23 +264,26 @@ export default function SurveyList() {
       if (n) {
         n.title = title;
         n.content = content;
-        if (imageData) {
-          const key = n.imageKey || ('notice_' + uid());
-          await idbPut('blobs', key, imageData);
-          n.imageKey = key;
-          n.imageUrl = '';
-        } else if (removeImage && n.imageKey) {
-          await idbDelete('blobs', n.imageKey);
-          n.imageKey = '';
-          n.imageUrl = '';
+        const oldKeys = n.imageKeys || (n.imageKey ? [n.imageKey] : []);
+        for (const oldKey of oldKeys) {
+          if (!keepKeys.includes(oldKey)) await idbDelete('blobs', oldKey);
         }
+        const allKeys = [...keepKeys];
+        for (const imgData of newImages) {
+          const key = 'notice_' + uid();
+          await idbPut('blobs', key, imgData);
+          allKeys.push(key);
+        }
+        n.imageKeys = allKeys;
+        delete n.imageKey;
+        delete n.imageUrl;
       }
     } else {
-      const n = { id: uid(), title, content, active: true, createdAt: new Date().toISOString() };
-      if (imageData) {
+      const n = { id: uid(), title, content, active: true, createdAt: new Date().toISOString(), imageKeys: [] };
+      for (const imgData of newImages) {
         const key = 'notice_' + uid();
-        await idbPut('blobs', key, imageData);
-        n.imageKey = key;
+        await idbPut('blobs', key, imgData);
+        n.imageKeys.push(key);
       }
       d.notices.push(n);
     }
@@ -235,7 +297,8 @@ export default function SurveyList() {
   const handleDeleteNotice = useCallback(async (notice) => {
     if (!confirm(`"${notice.title}" 공지를 삭제하시겠습니까?`)) return;
     const d = await loadData();
-    if (notice.imageKey) await idbDelete('blobs', notice.imageKey);
+    const keys = notice.imageKeys || (notice.imageKey ? [notice.imageKey] : []);
+    for (const key of keys) await idbDelete('blobs', key);
     d.notices = (d.notices || []).filter(n => n.id !== notice.id);
     await saveData(d);
     await refresh();
