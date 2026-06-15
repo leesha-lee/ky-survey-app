@@ -67,6 +67,46 @@ export async function saveData(data) {
   await idbPut('meta', 'appdata', data);
 }
 
+export async function exportAllData() {
+  const db = await openDB();
+  const appdata = await idbGet('meta', 'appdata');
+  const blobKeys = await idbGetAllKeys('blobs');
+  const blobs = {};
+  for (const key of blobKeys) {
+    blobs[key] = await idbGet('blobs', key);
+  }
+  return { appdata: appdata || { surveys: [], responses: {} }, blobs };
+}
+
+export async function importAllData(exported) {
+  const db = await openDB();
+  if (exported.appdata) {
+    const existing = await idbGet('meta', 'appdata') || { surveys: [], responses: {} };
+    const existingIds = new Set(existing.surveys.map(s => s.id));
+    for (const s of (exported.appdata.surveys || [])) {
+      if (!existingIds.has(s.id)) {
+        existing.surveys.push(s);
+      }
+    }
+    for (const [sid, resps] of Object.entries(exported.appdata.responses || {})) {
+      if (!existing.responses[sid]) {
+        existing.responses[sid] = resps;
+      } else {
+        const existingTimes = new Set(existing.responses[sid].map(r => r.submittedAt));
+        for (const r of resps) {
+          if (!existingTimes.has(r.submittedAt)) existing.responses[sid].push(r);
+        }
+      }
+    }
+    await idbPut('meta', 'appdata', existing);
+  }
+  if (exported.blobs) {
+    for (const [key, val] of Object.entries(exported.blobs)) {
+      await idbPut('blobs', key, val);
+    }
+  }
+}
+
 export async function resetDB() {
   if (_db) { _db.close(); _db = null; }
   return new Promise((resolve, reject) => {

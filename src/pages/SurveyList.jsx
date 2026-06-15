@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDB } from '../hooks/useDB';
 import { useAuth } from '../hooks/useAuth';
-import { loadData, saveData } from '../lib/db';
+import { loadData, saveData, exportAllData, importAllData } from '../lib/db';
 import { deleteSurveyBlobs, deleteDescBlobs } from '../lib/blob';
 import CategoryFilter from '../components/CategoryFilter';
 import SurveyCard from '../components/SurveyCard';
@@ -56,6 +56,41 @@ export default function SurveyList() {
     await refresh();
   }, [refresh]);
 
+  const handleExport = useCallback(async () => {
+    const exported = await exportAllData();
+    const json = JSON.stringify(exported);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `survey-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, []);
+
+  const handleImport = useCallback(() => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const imported = JSON.parse(text);
+        if (!imported.appdata) { alert('유효한 백업 파일이 아닙니다.'); return; }
+        const count = (imported.appdata.surveys || []).length;
+        if (!confirm(`${count}개 설문을 가져오시겠습니까? (기존 데이터는 유지됩니다)`)) return;
+        await importAllData(imported);
+        await refresh();
+        alert('가져오기 완료!');
+      } catch (err) {
+        alert('파일을 읽을 수 없습니다: ' + err.message);
+      }
+    };
+    input.click();
+  }, [refresh]);
+
   const surveys = data.surveys || [];
   const filtered = categoryFilter
     ? surveys.filter(s => (s.category || '기타') === categoryFilter)
@@ -66,11 +101,21 @@ export default function SurveyList() {
       <div className="card">
         <div className="flex-between">
           <h2>설문 목록</h2>
-          {isAdmin(currentUser) && (
-            <button className="btn btn-primary" onClick={() => navigate('/create')}>
-              + 새 설문 만들기
-            </button>
-          )}
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            {isAdmin(currentUser) && (
+              <>
+                <button className="btn" onClick={handleExport} style={{ fontSize: 13 }}>
+                  내보내기
+                </button>
+                <button className="btn" onClick={handleImport} style={{ fontSize: 13 }}>
+                  가져오기
+                </button>
+                <button className="btn btn-primary" onClick={() => navigate('/create')}>
+                  + 새 설문 만들기
+                </button>
+              </>
+            )}
+          </div>
         </div>
         <CategoryFilter
           surveys={surveys}
