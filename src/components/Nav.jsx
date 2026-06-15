@@ -2,20 +2,9 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { isAdmin } from '../config/roles';
 
-function MsIcon() {
-  return (
-    <svg viewBox="0 0 21 21" style={{ width: 18, height: 18 }}>
-      <rect x="1" y="1" width="9" height="9" fill="#f25022" />
-      <rect x="11" y="1" width="9" height="9" fill="#7fba00" />
-      <rect x="1" y="11" width="9" height="9" fill="#00a4ef" />
-      <rect x="11" y="11" width="9" height="9" fill="#ffb900" />
-    </svg>
-  );
-}
-
 export default function Nav() {
   const location = useLocation();
-  const { currentUser, login, logout } = useAuth();
+  const { currentUser, logout } = useAuth();
   const path = location.pathname;
 
   const isActive = (target) => {
@@ -51,7 +40,7 @@ export default function Nav() {
         </Link>
       )}
       <div className="auth-area">
-        {currentUser ? (
+        {currentUser && (
           <>
             <div className="user-profile">
               <div className="user-avatar">{initials}</div>
@@ -67,11 +56,6 @@ export default function Nav() {
               로그아웃
             </button>
           </>
-        ) : (
-          <button className="btn-ms-login" onClick={login}>
-            <MsIcon />
-            Microsoft 로그인
-          </button>
         )}
       </div>
     </nav>

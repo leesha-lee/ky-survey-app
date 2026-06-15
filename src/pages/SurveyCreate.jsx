@@ -6,7 +6,6 @@ import { restoreBlobs, saveSurveyData, deleteSurveyBlobs, extractDescBlobs, rest
 import { uid, esc, formatFileSize, getYoutubeEmbedUrl } from '../lib/utils';
 import { idbPut } from '../lib/db';
 import { fetchADDepartments, getMainDepartments } from '../lib/adDepartments';
-import { loginRequest } from '../config/msal';
 import { CATEGORIES } from '../config/categories';
 
 const GROUP_COLORS = ['#4361ee', '#2ec4b6', '#e63946', '#ffd166', '#06d6a0', '#8338ec', '#fb5607', '#118ab2', '#3a86a7', '#ff006e'];
@@ -64,7 +63,7 @@ function MediaPreview({ m }) {
 export default function SurveyCreate() {
   const { id: editId } = useParams();
   const navigate = useNavigate();
-  const { currentUser, msalInstance } = useAuth();
+  const { currentUser } = useAuth();
 
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('');
@@ -226,7 +225,7 @@ export default function SurveyCreate() {
     const q = { id: uid(), type: 'radio', title: '소속 부서를 선택해 주세요.', required: true, options: ['로딩 중...'], media: [], group: '' };
     setQuestions(prev => [...prev, q]);
     try {
-      const depts = await fetchADDepartments(msalInstance, loginRequest);
+      const depts = await fetchADDepartments();
       const main = getMainDepartments(depts, 5);
       const opts = main.map(d => {
         const parts = d.name.split(' _ ');
@@ -246,7 +245,7 @@ export default function SurveyCreate() {
     if (!q || (q.type !== 'radio' && q.type !== 'checkbox')) return;
     updateQuestion(qi, { options: ['로딩 중...'] });
     try {
-      const depts = await fetchADDepartments(msalInstance, loginRequest);
+      const depts = await fetchADDepartments();
       const main = getMainDepartments(depts, 5);
       const opts = main.map(d => {
         const parts = d.name.split(' _ ');

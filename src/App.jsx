@@ -38,7 +38,7 @@ function AppContent() {
 export default function App() {
   return (
     <AuthProvider>
-      <BrowserRouter basename="/ky-survey-app">
+      <BrowserRouter basename="/survey">
         <AppContent />
       </BrowserRouter>
     </AuthProvider>
