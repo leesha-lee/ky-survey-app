@@ -2,8 +2,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { loadData, saveData } from '../lib/db';
-import { restoreBlobs, saveSurveyData, deleteSurveyBlobs } from '../lib/blob';
+import { restoreBlobs, saveSurveyData, deleteSurveyBlobs, extractDescBlobs, restoreDescBlobs, deleteDescBlobs } from '../lib/blob';
 import { uid, esc, formatFileSize, getYoutubeEmbedUrl } from '../lib/utils';
+import { idbPut } from '../lib/db';
 import { fetchADDepartments, getMainDepartments } from '../lib/adDepartments';
 import { loginRequest } from '../config/msal';
 import { CATEGORIES } from '../config/categories';
@@ -71,16 +72,17 @@ export default function SurveyCreate() {
   const [questions, setQuestions] = useState([]);
   const [questionGroups, setQuestionGroups] = useState([]);
   const [newGroupName, setNewGroupName] = useState('');
+  const [descImages, setDescImages] = useState([]);
 
   // Load survey for editing
   useEffect(() => {
     if (!editId) {
-      // Reset form for create mode
       setTitle('');
       setCategory('');
       setDescription('');
       setQuestions([]);
       setQuestionGroups([]);
+      setDescImages([]);
       return;
     }
     async function load() {
@@ -93,6 +95,12 @@ export default function SurveyCreate() {
       const restored = await restoreBlobs(s.questions);
       setQuestions(restored);
       setQuestionGroups(s.questionGroups ? JSON.parse(JSON.stringify(s.questionGroups)) : []);
+      if (s.descriptionImages) {
+        const restoredDesc = await restoreDescBlobs(s.descriptionImages);
+        setDescImages(restoredDesc);
+      } else {
+        setDescImages([]);
+      }
     }
     load();
   }, [editId]);
@@ -194,6 +202,22 @@ export default function SurveyCreate() {
     if (f) processFile(f, qi, mi);
   };
 
+  const addDescImages = (files) => {
+    Array.from(files).forEach(file => {
+      if (!file.type.startsWith('image/')) return;
+      if (file.size > 50 * 1024 * 1024) { alert(`${file.name}: 50MB 초과`); return; }
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setDescImages(prev => [...prev, { url: e.target.result, fileName: file.name, fileSize: formatFileSize(file.size) }]);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removeDescImage = (idx) => {
+    setDescImages(prev => prev.filter((_, i) => i !== idx));
+  };
+
   const addDeptQuestion = async () => {
     if (!currentUser) {
       alert('Azure AD 부서 목록을 불러오려면 먼저 Microsoft 로그인이 필요합니다.');
@@ -246,14 +270,20 @@ export default function SurveyCreate() {
 
     const data = await loadData();
     const cleaned = await saveSurveyData(data, questions);
+    const { cleaned: cleanedDescImgs, blobs: descBlobs } = extractDescBlobs(descImages);
+    for (const [key, val] of Object.entries(descBlobs)) {
+      await idbPut('blobs', key, val);
+    }
 
     if (editId) {
       const idx = data.surveys.findIndex(s => s.id === editId);
       if (idx >= 0) {
         await deleteSurveyBlobs(data.surveys[idx].questions);
+        await deleteDescBlobs(data.surveys[idx].descriptionImages);
         data.surveys[idx].title = title.trim();
         data.surveys[idx].category = category;
         data.surveys[idx].description = description.trim();
+        data.surveys[idx].descriptionImages = cleanedDescImgs;
         data.surveys[idx].questions = cleaned;
         data.surveys[idx].questionGroups = JSON.parse(JSON.stringify(questionGroups));
       }
@@ -263,6 +293,7 @@ export default function SurveyCreate() {
         title: title.trim(),
         category,
         description: description.trim(),
+        descriptionImages: cleanedDescImgs,
         questions: cleaned,
         questionGroups: JSON.parse(JSON.stringify(questionGroups)),
         createdAt: new Date().toLocaleDateString('ko-KR'),
@@ -491,6 +522,35 @@ export default function SurveyCreate() {
         </select>
         <label>설문 설명</label>
         <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="설문에 대한 간단한 설명을 입력하세요" />
+
+        <label>설명 이미지 {descImages.length > 0 && <span style={{ color: '#2ec4b6', fontWeight: 400 }}>({descImages.length}개)</span>}</label>
+        {descImages.length > 0 && (
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
+            {descImages.map((img, idx) => (
+              <div key={idx} style={{ position: 'relative', border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden', width: 140 }}>
+                <img src={img.url} alt="" style={{ width: '100%', height: 100, objectFit: 'cover', display: 'block' }} />
+                <div style={{ padding: '4px 6px', fontSize: 11, color: '#6b7280', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {img.fileName}
+                </div>
+                <button
+                  onClick={() => removeDescImage(idx)}
+                  style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(0,0,0,0.5)', color: '#fff', border: 'none', borderRadius: '50%', width: 22, height: 22, cursor: 'pointer', fontSize: 14, lineHeight: '20px', textAlign: 'center' }}
+                >&times;</button>
+              </div>
+            ))}
+          </div>
+        )}
+        <div
+          className="upload-zone"
+          onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add('dragover'); }}
+          onDragLeave={(e) => { e.currentTarget.classList.remove('dragover'); }}
+          onDrop={(e) => { e.preventDefault(); e.currentTarget.classList.remove('dragover'); addDescImages(e.dataTransfer.files); }}
+        >
+          <div className="upload-icon">&#x1F4F7;</div>
+          <div className="upload-text"><strong>클릭</strong>하거나 파일을 <strong>드래그</strong>하세요</div>
+          <div className="upload-text">JPG, PNG, GIF, SVG, WebP (최대 50MB, 여러 장 선택 가능)</div>
+          <input type="file" accept="image/*" multiple onChange={(e) => { addDescImages(e.target.files); e.target.value = ''; }} />
+        </div>
       </div>
 
       <div className="card">

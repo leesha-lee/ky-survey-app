@@ -56,3 +56,37 @@ export async function deleteSurveyBlobs(questions) {
     }
   }
 }
+
+export function extractDescBlobs(images) {
+  const blobs = {};
+  const cleaned = JSON.parse(JSON.stringify(images || []));
+  cleaned.forEach(img => {
+    if (img.url && img.url.startsWith('data:') && img.url.length > 200) {
+      const key = 'blob_' + uid();
+      blobs[key] = img.url;
+      img.url = 'idb://' + key;
+    }
+  });
+  return { cleaned, blobs };
+}
+
+export async function restoreDescBlobs(images) {
+  const restored = JSON.parse(JSON.stringify(images || []));
+  for (const img of restored) {
+    if (img.url && img.url.startsWith('idb://')) {
+      const key = img.url.slice(6);
+      const dataUrl = await idbGet('blobs', key);
+      img.url = dataUrl || '';
+    }
+  }
+  return restored;
+}
+
+export async function deleteDescBlobs(images) {
+  if (!images) return;
+  for (const img of images) {
+    if (img.url && img.url.startsWith('idb://')) {
+      await idbDelete('blobs', img.url.slice(6));
+    }
+  }
+}

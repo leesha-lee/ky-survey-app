@@ -11,7 +11,7 @@ import {
   Legend,
 } from 'chart.js';
 import { loadData } from '../lib/db';
-import { restoreBlobs } from '../lib/blob';
+import { restoreBlobs, restoreDescBlobs } from '../lib/blob';
 import { esc, getMedian, getMode, getStdDev, csvEsc, getYoutubeEmbedUrl, groupQuestions } from '../lib/utils';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend);
@@ -54,6 +54,7 @@ export default function SurveyReport() {
   const [allResponses, setAllResponses] = useState([]);
   const [questions, setQuestions] = useState([]);
   const [deptFilter, setDeptFilter] = useState('');
+  const [descImages, setDescImages] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -65,6 +66,10 @@ export default function SurveyReport() {
       setAllResponses(data.responses[id] || []);
       const restored = await restoreBlobs(s.questions);
       setQuestions(restored);
+      if (s.descriptionImages) {
+        const restoredDesc = await restoreDescBlobs(s.descriptionImages);
+        setDescImages(restoredDesc);
+      }
       setLoading(false);
     }
     load();
@@ -152,6 +157,15 @@ export default function SurveyReport() {
           </div>
         )}
       </div>
+
+      {(survey.description || descImages.length > 0) && (
+        <div className="card">
+          {survey.description && <p style={{ color: '#6b7280', marginBottom: descImages.length ? 14 : 0 }}>{survey.description}</p>}
+          {descImages.length > 0 && (
+            <MediaDisplay mediaArr={descImages.map(img => ({ type: 'image', url: img.url, alt: '' }))} />
+          )}
+        </div>
+      )}
 
       {!responses.length ? (
         <div className="card"><div className="empty-state"><p>아직 응답 데이터가 없습니다.</p></div></div>

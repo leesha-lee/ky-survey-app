@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { loadData, saveData } from '../lib/db';
-import { restoreBlobs } from '../lib/blob';
+import { restoreBlobs, restoreDescBlobs } from '../lib/blob';
 import { esc, getYoutubeEmbedUrl } from '../lib/utils';
 
 function MsIcon() {
@@ -68,6 +68,7 @@ export default function SurveyTake() {
   const [survey, setSurvey] = useState(null);
   const [questions, setQuestions] = useState([]);
   const [answers, setAnswers] = useState({});
+  const [descImages, setDescImages] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -86,6 +87,10 @@ export default function SurveyTake() {
         }
         const restored = await restoreBlobs(s.questions);
         setQuestions(restored);
+        if (s.descriptionImages) {
+          const restoredDesc = await restoreDescBlobs(s.descriptionImages);
+          setDescImages(restoredDesc);
+        }
       }
       setLoading(false);
     }
@@ -149,6 +154,9 @@ export default function SurveyTake() {
         <div className="card">
           <h2>{survey.title}</h2>
           <p style={{ color: '#6b7280', marginBottom: 20 }}>{survey.description || ''}</p>
+          {survey.descriptionImages && survey.descriptionImages.length > 0 && (
+            <MediaDisplay mediaArr={survey.descriptionImages.map(img => ({ type: 'image', url: img.url, alt: '' }))} />
+          )}
           <div className="login-required">
             <p>설문에 응답하려면 Microsoft 계정으로 로그인해야 합니다.</p>
             <button className="btn-ms-login" onClick={handleLoginAndRetry} style={{ fontSize: 15, padding: '10px 24px' }}>
@@ -169,6 +177,9 @@ export default function SurveyTake() {
       <div className="card">
         <h2>{survey.title}</h2>
         <p style={{ color: '#6b7280', marginBottom: 20 }}>{survey.description || ''}</p>
+        {descImages.length > 0 && (
+          <MediaDisplay mediaArr={descImages.map(img => ({ type: 'image', url: img.url, alt: '' }))} />
+        )}
 
         <div style={{ marginBottom: 16 }}>
           <span className="respondent-tag">

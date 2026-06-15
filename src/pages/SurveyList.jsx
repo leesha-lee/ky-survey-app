@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useDB } from '../hooks/useDB';
 import { useAuth } from '../hooks/useAuth';
 import { loadData, saveData } from '../lib/db';
-import { deleteSurveyBlobs } from '../lib/blob';
+import { deleteSurveyBlobs, deleteDescBlobs } from '../lib/blob';
 import CategoryFilter from '../components/CategoryFilter';
 import SurveyCard from '../components/SurveyCard';
 import { isAdmin } from '../config/roles';
@@ -28,7 +28,10 @@ export default function SurveyList() {
     if (!confirm('이 설문을 삭제하시겠습니까? 응답 데이터도 함께 삭제됩니다.')) return;
     const d = await loadData();
     const s = d.surveys.find(x => x.id === id);
-    if (s) await deleteSurveyBlobs(s.questions);
+    if (s) {
+      await deleteSurveyBlobs(s.questions);
+      await deleteDescBlobs(s.descriptionImages);
+    }
     d.surveys = d.surveys.filter(s => s.id !== id);
     delete d.responses[id];
     await saveData(d);
