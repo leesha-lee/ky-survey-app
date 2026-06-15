@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Bar, Doughnut } from 'react-chartjs-2';
 import {
@@ -10,9 +10,9 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
-import { loadData } from '../lib/db';
-import { restoreBlobs, restoreDescBlobs } from '../lib/blob';
-import { esc, getMedian, getMode, getStdDev, csvEsc, getYoutubeEmbedUrl, groupQuestions } from '../lib/utils';
+import { loadData, saveData } from '../lib/db';
+import { restoreBlobs } from '../lib/blob';
+import { esc, getMedian, getMode, getStdDev, csvEsc, getYoutubeEmbedUrl, getSharePointEmbedUrl, groupQuestions } from '../lib/utils';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend);
 
@@ -36,8 +36,8 @@ function MediaDisplay({ mediaArr }) {
     <div style={{ marginBottom: 14 }}>
       {lightbox && <ImageLightbox src={lightbox.src} alt={lightbox.alt} onClose={() => setLightbox(null)} />}
       {items.map((m, i) => {
-        if (m.type === 'image') return <div className="media-preview" key={i}><img src={m.url} alt={m.alt || ''} style={{ cursor: 'zoom-in' }} onClick={() => setLightbox({ src: m.url, alt: m.alt || '' })} /></div>;
-        if (m.type === 'video') return <div className="media-preview" key={i}><video src={m.url} controls></video></div>;
+        if (m.type === 'image') { const sp = getSharePointEmbedUrl(m.url); if (sp) return <div className="media-preview" key={i}><iframe src={sp} allowFullScreen></iframe></div>; return <div className="media-preview" key={i}><img src={m.url} alt={m.alt || ''} style={{ cursor: 'zoom-in' }} onClick={() => setLightbox({ src: m.url, alt: m.alt || '' })} /></div>; }
+        if (m.type === 'video') { const sp = getSharePointEmbedUrl(m.url); if (sp) return <div className="media-preview" key={i}><iframe src={sp} allowFullScreen></iframe></div>; return <div className="media-preview" key={i}><video src={m.url} controls></video></div>; }
         if (m.type === 'youtube') { const e = getYoutubeEmbedUrl(m.url); return e ? <div className="media-preview" key={i}><iframe src={e} allowFullScreen></iframe></div> : null; }
         if (m.type === 'link') return <div className="media-preview" key={i}><a href={m.url} target="_blank" rel="noopener noreferrer" className="link-card">&#128279; {m.label || m.url}</a></div>;
         return null;
@@ -54,7 +54,9 @@ export default function SurveyReport() {
   const [allResponses, setAllResponses] = useState([]);
   const [questions, setQuestions] = useState([]);
   const [deptFilter, setDeptFilter] = useState('');
-  const [descImages, setDescImages] = useState([]);
+  const [qFilterIdx, setQFilterIdx] = useState('');
+  const [aFilter, setAFilter] = useState('');
+  const [colWidths, setColWidths] = useState({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -66,10 +68,6 @@ export default function SurveyReport() {
       setAllResponses(data.responses[id] || []);
       const restored = await restoreBlobs(s.questions);
       setQuestions(restored);
-      if (s.descriptionImages) {
-        const restoredDesc = await restoreDescBlobs(s.descriptionImages);
-        setDescImages(restoredDesc);
-      }
       setLoading(false);
     }
     load();
@@ -84,13 +82,93 @@ export default function SurveyReport() {
     return d;
   }, [allResponses]);
 
-  const responses = useMemo(() => {
-    if (!deptFilter) return allResponses;
-    return allResponses.filter(r => {
-      const d = (r.respondent && r.respondent.department) ? r.respondent.department : '(미지정)';
-      return d === deptFilter;
+  const choiceQuestions = useMemo(() => {
+    return questions
+      .map((q, i) => ({ q, i }))
+      .filter(({ q }) => q.type === 'radio' || q.type === 'checkbox');
+  }, [questions]);
+
+  const answerOptions = useMemo(() => {
+    if (qFilterIdx === '') return [];
+    const qi = Number(qFilterIdx);
+    const q = questions[qi];
+    if (!q) return [];
+    const opts = new Set();
+    allResponses.forEach(r => {
+      const a = r.answers[qi];
+      if (Array.isArray(a)) a.forEach(v => opts.add(v));
+      else if (a) opts.add(a);
     });
-  }, [allResponses, deptFilter]);
+    return [...opts];
+  }, [qFilterIdx, questions, allResponses]);
+
+  const responses = useMemo(() => {
+    let filtered = allResponses;
+    if (deptFilter) {
+      filtered = filtered.filter(r => {
+        const d = (r.respondent && r.respondent.department) ? r.respondent.department : '(미지정)';
+        return d === deptFilter;
+      });
+    }
+    if (qFilterIdx !== '' && aFilter) {
+      const qi = Number(qFilterIdx);
+      filtered = filtered.filter(r => {
+        const a = r.answers[qi];
+        if (Array.isArray(a)) return a.includes(aFilter);
+        return a === aFilter;
+      });
+    }
+    return filtered;
+  }, [allResponses, deptFilter, qFilterIdx, aFilter]);
+
+  const STICKY_DEFAULTS = [40, 80, 130, 90];
+  const getLeft = (ci) => {
+    let l = 0;
+    for (let i = 0; i < ci && i < 4; i++) l += colWidths[i] ?? STICKY_DEFAULTS[i];
+    return l;
+  };
+  const stickyW = (ci) => colWidths[ci] ?? STICKY_DEFAULTS[ci];
+  const stickyTh = (ci) => ({
+    position: 'sticky', left: getLeft(ci), zIndex: 3, background: '#f8f9ff',
+    width: stickyW(ci), minWidth: stickyW(ci), maxWidth: stickyW(ci),
+  });
+  const stickyTd = (ci) => ({
+    position: 'sticky', left: getLeft(ci), zIndex: 1, background: '#fff',
+    width: stickyW(ci), minWidth: stickyW(ci), maxWidth: stickyW(ci),
+  });
+
+  const startColResize = useCallback((colIdx, e) => {
+    e.preventDefault();
+    const th = e.target.closest('th');
+    const startX = e.clientX;
+    const startW = th.offsetWidth;
+    const onMove = (ev) => {
+      setColWidths(prev => ({ ...prev, [colIdx]: Math.max(30, startW + ev.clientX - startX) }));
+    };
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }, []);
+
+  const deleteResponse = async (ri) => {
+    const rsp = allResponses[ri]?.respondent;
+    const name = rsp?.name || '익명';
+    const time = new Date(allResponses[ri]?.submittedAt).toLocaleString('ko-KR');
+    if (!confirm(`${name}님의 응답(${time})을 삭제하시겠습니까?`)) return;
+    const data = await loadData();
+    const resps = data.responses[id] || [];
+    resps.splice(ri, 1);
+    data.responses[id] = resps;
+    await saveData(data);
+    setAllResponses([...resps]);
+  };
 
   const exportCSV = () => {
     if (!survey || !responses.length) { alert('내보낼 데이터가 없습니다.'); return; }
@@ -134,38 +212,57 @@ export default function SurveyReport() {
       <div className="card no-print">
         <div className="flex-between">
           <h2>{survey.title} - 통계 리포트</h2>
+          {survey.titleEn && <div style={{ fontSize: 14, color: '#6b7280', marginTop: -8, marginBottom: 8 }}>{survey.titleEn}</div>}
           <div>
             <button className="btn btn-outline btn-sm" onClick={() => window.print()}>인쇄 / PDF</button>
             <button className="btn btn-outline btn-sm" onClick={exportCSV} style={{ marginLeft: 4 }}>CSV 내보내기</button>
             <button className="btn btn-secondary btn-sm" onClick={() => navigate('/')} style={{ marginLeft: 4 }}>돌아가기</button>
           </div>
         </div>
-        {Object.keys(deptSet).length > 1 && (
-          <div className="dept-filter">
-            <label>부서 필터:</label>
-            <select value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)}>
-              <option value="">전체 부서</option>
-              {Object.entries(deptSet).sort((a, b) => b[1] - a[1]).map(([d, c]) => (
-                <option key={d} value={d}>{d} ({c}명)</option>
-              ))}
-            </select>
-            {deptFilter && (
+        <div className="report-filters">
+          {Object.keys(deptSet).length > 1 && (
+            <div className="dept-filter">
+              <label>부서 필터:</label>
+              <select value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)}>
+                <option value="">전체 부서</option>
+                {Object.entries(deptSet).sort((a, b) => b[1] - a[1]).map(([d, c]) => (
+                  <option key={d} value={d}>{d} ({c}명)</option>
+                ))}
+              </select>
+            </div>
+          )}
+          {choiceQuestions.length > 0 && (
+            <div className="dept-filter">
+              <label>답변 필터:</label>
+              <select value={qFilterIdx} onChange={(e) => { setQFilterIdx(e.target.value); setAFilter(''); }}>
+                <option value="">질문 선택</option>
+                {choiceQuestions.map(({ q, i }) => (
+                  <option key={i} value={i}>Q{i + 1}. {q.title}</option>
+                ))}
+              </select>
+              {qFilterIdx !== '' && (
+                <select value={aFilter} onChange={(e) => setAFilter(e.target.value)}>
+                  <option value="">전체 답변</option>
+                  {answerOptions.map(opt => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
+              )}
+            </div>
+          )}
+          {(deptFilter || aFilter) && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ fontSize: 13, color: '#6b7280' }}>
-                {responses.length}건 / 전체 {allResponses.length}건
+                필터 결과: {responses.length}건 / 전체 {allResponses.length}건
               </span>
-            )}
-          </div>
-        )}
-      </div>
-
-      {(survey.description || descImages.length > 0) && (
-        <div className="card">
-          {survey.description && <p style={{ color: '#6b7280', marginBottom: descImages.length ? 14 : 0 }}>{survey.description}</p>}
-          {descImages.length > 0 && (
-            <MediaDisplay mediaArr={descImages.map(img => ({ type: 'image', url: img.url, alt: '' }))} />
+              <button
+                className="btn btn-outline btn-sm"
+                onClick={() => { setDeptFilter(''); setQFilterIdx(''); setAFilter(''); }}
+              >필터 초기화</button>
+            </div>
           )}
         </div>
-      )}
+      </div>
 
       {!responses.length ? (
         <div className="card"><div className="empty-state"><p>아직 응답 데이터가 없습니다.</p></div></div>
@@ -241,33 +338,63 @@ export default function SurveyReport() {
           {/* Full response table */}
           <div className="card">
             <h3>전체 응답 데이터</h3>
-            <div style={{ overflowX: 'auto' }}>
-              <table className="response-table">
+            <div className="raw-table-wrap">
+              {(() => {
+                const cw = [
+                  colWidths[0] ?? 40, colWidths[1] ?? 80, colWidths[2] ?? 130, colWidths[3] ?? 90,
+                  colWidths[4] ?? 140,
+                  ...questions.map((q, qi) => colWidths[5 + qi] ?? (q.type === 'text' ? 500 : q.type === 'scale' ? 60 : 120)),
+                  70,
+                ];
+                const totalW = cw.reduce((a, b) => a + b, 0);
+                return (
+              <table className="response-table raw-data-table" style={{ width: totalW }}>
                 <thead>
                   <tr>
-                    <th>#</th><th>응답자</th><th>이메일</th><th>부서</th><th>제출일시</th>
-                    {questions.map((q, qi) => <th key={qi}>Q{qi + 1}</th>)}
+                    {['#', '응답자', '이메일', '부서'].map((label, ci) => (
+                      <th key={ci} style={{ ...stickyTh(ci), width: cw[ci] }}>
+                        {label}<div className="col-resize" onMouseDown={e => startColResize(ci, e)} />
+                      </th>
+                    ))}
+                    <th style={{ width: cw[4] }}>
+                      제출일시<div className="col-resize" onMouseDown={e => startColResize(4, e)} />
+                    </th>
+                    {questions.map((q, qi) => {
+                      const ci = 5 + qi;
+                      return (
+                        <th key={qi} style={{ width: cw[ci] }}>
+                          Q{qi + 1}<div className="col-resize" onMouseDown={e => startColResize(ci, e)} />
+                        </th>
+                      );
+                    })}
+                    <th className="no-print" style={{ width: 70 }}>관리</th>
                   </tr>
                 </thead>
                 <tbody>
                   {responses.map((r, ri) => {
                     const rsp = r.respondent || {};
+                    const realIndex = (deptFilter || aFilter) ? allResponses.indexOf(r) : ri;
                     return (
                       <tr key={ri}>
-                        <td>{ri + 1}</td>
-                        <td>{rsp.name || '익명'}</td>
-                        <td>{rsp.email || '-'}</td>
-                        <td>{rsp.department || '-'}</td>
+                        <td style={stickyTd(0)}>{ri + 1}</td>
+                        <td style={stickyTd(1)}>{rsp.name || '익명'}</td>
+                        <td style={stickyTd(2)}>{rsp.email || '-'}</td>
+                        <td style={stickyTd(3)}>{rsp.department || '-'}</td>
                         <td>{new Date(r.submittedAt).toLocaleString('ko-KR')}</td>
                         {questions.map((q, qi) => {
                           const a = r.answers[qi];
-                          return <td key={qi}>{Array.isArray(a) ? a.join(', ') : (a || '-')}</td>;
+                          return <td key={qi} className={q.type === 'text' ? 'td-text' : ''}>{Array.isArray(a) ? a.join(', ') : (a || '-')}</td>;
                         })}
+                        <td className="no-print">
+                          <button className="btn btn-danger btn-sm" onClick={() => deleteResponse(realIndex)}>삭제</button>
+                        </td>
                       </tr>
                     );
                   })}
                 </tbody>
               </table>
+                );
+              })()}
             </div>
           </div>
         </>
@@ -290,9 +417,13 @@ function QuestionReport({ q, qi, responses }) {
 
     const chartType = q.options.length > 5 ? 'bar' : 'doughnut';
 
+    const optEnMap = {};
+    if (q.optionsEn) q.options.forEach((o, oi) => { if (q.optionsEn[oi]) optEnMap[o] = q.optionsEn[oi]; });
+
     return (
       <div className="card">
         <h3>Q{qi + 1}. {q.title}</h3>
+        {q.titleEn && <div style={{ fontSize: 13, color: '#6b7280', marginTop: -8, marginBottom: 8 }}>{q.titleEn}</div>}
         <p style={{ color: '#6b7280', fontSize: 13, marginBottom: 14 }}>{typeLabel} &middot; 응답 {responses.length}건</p>
         <MediaDisplay mediaArr={q.media} />
         <div style={{ marginBottom: 14 }}>
@@ -301,7 +432,7 @@ function QuestionReport({ q, qi, responses }) {
             return (
               <div key={l} style={{ marginBottom: 8 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 3 }}>
-                  <span>{l}</span><span>{c}명 ({p}%)</span>
+                  <span>{l}{optEnMap[l] && <span style={{ color: '#9ca3af', marginLeft: 4 }}>/ {optEnMap[l]}</span>}</span><span>{c}명 ({p}%)</span>
                 </div>
                 <div className="progress-bar">
                   <div className="fill" style={{ width: `${p}%`, background: COLORS[i % COLORS.length] }}>
@@ -345,6 +476,7 @@ function QuestionReport({ q, qi, responses }) {
     return (
       <div className="card">
         <h3>Q{qi + 1}. {q.title}</h3>
+        {q.titleEn && <div style={{ fontSize: 13, color: '#6b7280', marginTop: -8, marginBottom: 8 }}>{q.titleEn}</div>}
         <p style={{ color: '#6b7280', fontSize: 13, marginBottom: 14 }}>{typeLabel} &middot; 응답 {responses.length}건</p>
         <MediaDisplay mediaArr={q.media} />
         <div className="stat-summary">
@@ -398,6 +530,7 @@ function QuestionReport({ q, qi, responses }) {
     return (
       <div className="card">
         <h3>Q{qi + 1}. {q.title}</h3>
+        {q.titleEn && <div style={{ fontSize: 13, color: '#6b7280', marginTop: -8, marginBottom: 8 }}>{q.titleEn}</div>}
         <p style={{ color: '#6b7280', fontSize: 13, marginBottom: 14 }}>{typeLabel} &middot; 응답 {responses.length}건</p>
         <MediaDisplay mediaArr={q.media} />
         <table className="response-table">

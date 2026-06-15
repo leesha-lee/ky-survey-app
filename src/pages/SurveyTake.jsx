@@ -1,9 +1,26 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { loadData, saveData } from '../lib/db';
-import { restoreBlobs, restoreDescBlobs } from '../lib/blob';
-import { esc, getYoutubeEmbedUrl } from '../lib/utils';
+import { restoreBlobs } from '../lib/blob';
+import { esc, getYoutubeEmbedUrl, getSharePointEmbedUrl } from '../lib/utils';
+
+function RichText({ text }) {
+  if (!text) return null;
+  return (
+    <div className="survey-description">
+      {text.split('\n').map((line, li) => (
+        <p key={li}>
+          {line.split(/(\*\*[^*]+\*\*)/).map((seg, si) =>
+            seg.startsWith('**') && seg.endsWith('**')
+              ? <strong key={si}>{seg.slice(2, -2)}</strong>
+              : seg
+          )}
+        </p>
+      ))}
+    </div>
+  );
+}
 
 function MsIcon() {
   return (
@@ -25,25 +42,98 @@ function ImageLightbox({ src, alt, onClose }) {
   );
 }
 
-function MediaDisplay({ mediaArr }) {
-  const [lightbox, setLightbox] = useState(null);
+function ImageCarousel({ images, onImageClick }) {
+  const trackRef = useRef(null);
+  const [idx, setIdx] = useState(0);
+  const total = images.length;
+  const touchStart = useRef(null);
+
+  const scrollTo = useCallback((i) => {
+    const clamped = Math.max(0, Math.min(i, total - 1));
+    setIdx(clamped);
+    if (trackRef.current) {
+      const child = trackRef.current.children[clamped];
+      if (child) child.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+  }, [total]);
+
+  const prev = () => scrollTo(idx - 1);
+  const next = () => scrollTo(idx + 1);
+
+  const onTouchStart = (e) => { touchStart.current = e.touches[0].clientX; };
+  const onTouchEnd = (e) => {
+    if (touchStart.current == null) return;
+    const diff = touchStart.current - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 40) { diff > 0 ? next() : prev(); }
+    touchStart.current = null;
+  };
+
+  if (total <= 1) {
+    return images.length === 1 ? (
+      <div>
+        <img src={images[0].url} alt={images[0].alt || ''} style={{ cursor: 'zoom-in', maxWidth: '100%', borderRadius: 8 }} onClick={() => onImageClick && onImageClick(images[0])} />
+        {images[0].caption && <div className="media-caption">{images[0].caption}</div>}
+      </div>
+    ) : null;
+  }
+
+  return (
+    <div className="carousel" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+      <button className="carousel-btn carousel-prev" onClick={prev} disabled={idx === 0}>&lsaquo;</button>
+      <div className="carousel-track" ref={trackRef}>
+        {images.map((img, i) => (
+          <img
+            key={i}
+            src={img.url}
+            alt={img.alt || ''}
+            className={i === idx ? 'active' : ''}
+            onClick={() => onImageClick && onImageClick(img)}
+          />
+        ))}
+      </div>
+      <button className="carousel-btn carousel-next" onClick={next} disabled={idx === total - 1}>&rsaquo;</button>
+      {images[idx] && images[idx].caption && <div className="media-caption">{images[idx].caption}</div>}
+      <div className="carousel-dots">
+        {images.map((_, i) => (
+          <span key={i} className={i === idx ? 'active' : ''} onClick={() => scrollTo(i)} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MediaDisplay({ mediaArr, onLightbox }) {
   if (!mediaArr || !mediaArr.length) return null;
   const items = mediaArr.filter(m => m.url);
   if (!items.length) return null;
 
+  const imageItems = items.filter(m => m.type === 'image' && !getSharePointEmbedUrl(m.url));
+  const otherItems = items.filter(m => m.type !== 'image' || getSharePointEmbedUrl(m.url));
+
   return (
     <div style={{ marginBottom: 14 }}>
-      {lightbox && <ImageLightbox src={lightbox.src} alt={lightbox.alt} onClose={() => setLightbox(null)} />}
-      {items.map((m, i) => {
+      {imageItems.length > 0 && (
+        <div className="media-preview">
+          <ImageCarousel
+            images={imageItems.map(m => ({ url: m.url, alt: m.alt || '', caption: m.caption || '' }))}
+            onImageClick={(img) => onLightbox && onLightbox({ src: img.url, alt: img.alt })}
+          />
+        </div>
+      )}
+      {otherItems.map((m, i) => {
+        const cap = m.caption ? <div className="media-caption">{m.caption}</div> : null;
         if (m.type === 'image') {
-          return <div className="media-preview" key={i}><img src={m.url} alt={m.alt || ''} style={{ cursor: 'zoom-in' }} onClick={() => setLightbox({ src: m.url, alt: m.alt || '' })} /></div>;
+          const spEmbed = getSharePointEmbedUrl(m.url);
+          return <div className="media-preview" key={i}><iframe src={spEmbed} allowFullScreen></iframe>{cap}</div>;
         }
         if (m.type === 'video') {
-          return <div className="media-preview" key={i}><video src={m.url} controls></video></div>;
+          const spEmbed = getSharePointEmbedUrl(m.url);
+          if (spEmbed) return <div className="media-preview" key={i}><iframe src={spEmbed} allowFullScreen></iframe>{cap}</div>;
+          return <div className="media-preview" key={i}><video src={m.url} controls></video>{cap}</div>;
         }
         if (m.type === 'youtube') {
           const embedUrl = getYoutubeEmbedUrl(m.url);
-          return embedUrl ? <div className="media-preview" key={i}><iframe src={embedUrl} allowFullScreen></iframe></div> : null;
+          return embedUrl ? <div className="media-preview" key={i}><iframe src={embedUrl} allowFullScreen></iframe>{cap}</div> : null;
         }
         if (m.type === 'link') {
           return (
@@ -51,6 +141,7 @@ function MediaDisplay({ mediaArr }) {
               <a href={m.url} target="_blank" rel="noopener noreferrer" className="link-card">
                 &#128279; {m.label || m.url}
               </a>
+              {cap}
             </div>
           );
         }
@@ -68,29 +159,31 @@ export default function SurveyTake() {
   const [survey, setSurvey] = useState(null);
   const [questions, setQuestions] = useState([]);
   const [answers, setAnswers] = useState({});
-  const [descImages, setDescImages] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
+  const [lightbox, setLightbox] = useState(null);
 
   useEffect(() => {
     async function load() {
-      const data = await loadData();
-      const s = data.surveys.find(x => x.id === id);
-      if (!s) { setLoading(false); return; }
-      setSurvey(s);
+      try {
+        const data = await loadData();
+        const s = data.surveys.find(x => x.id === id);
+        if (!s) { setLoading(false); return; }
+        setSurvey(s);
 
-      if (currentUser) {
-        // Check duplicate
-        const existing = (data.responses[id] || []).find(r => r.respondent && r.respondent.email === currentUser.email);
-        if (existing && !confirm(`이미 ${new Date(existing.submittedAt).toLocaleString('ko-KR')}에 응답하셨습니다.\n다시 응답하시겠습니까? (기존 응답은 유지됩니다)`)) {
-          navigate('/');
-          return;
+        if (currentUser) {
+          // Check duplicate
+          const existing = (data.responses[id] || []).find(r => r.respondent && r.respondent.email === currentUser.email);
+          if (existing && !confirm(`이미 ${new Date(existing.submittedAt).toLocaleString('ko-KR')}에 응답하셨습니다.\n다시 응답하시겠습니까? (기존 응답은 유지됩니다)`)) {
+            navigate('/');
+            return;
+          }
+          const restored = await restoreBlobs(s.questions);
+          setQuestions(restored);
         }
-        const restored = await restoreBlobs(s.questions);
-        setQuestions(restored);
-        if (s.descriptionImages) {
-          const restoredDesc = await restoreDescBlobs(s.descriptionImages);
-          setDescImages(restoredDesc);
-        }
+      } catch (e) {
+        console.error('Survey load failed:', e);
+        setLoadError(e);
       }
       setLoading(false);
     }
@@ -145,6 +238,7 @@ export default function SurveyTake() {
   };
 
   if (loading) return <div className="page active"><div className="card"><div className="empty-state"><p>로딩 중...</p></div></div></div>;
+  if (loadError) return <div className="page active"><div className="card"><div className="empty-state" style={{ color: '#e63946' }}><p>데이터를 불러올 수 없습니다.</p><p style={{ fontSize: 13, marginTop: 8 }}>Firestore 보안 규칙을 확인해 주세요.</p><pre style={{ fontSize: 11, background: '#f8f9fa', padding: 12, borderRadius: 8, marginTop: 8, whiteSpace: 'pre-wrap' }}>{loadError.message || String(loadError)}</pre></div></div></div>;
   if (!survey) return <div className="page active"><div className="card"><div className="empty-state"><p>설문을 찾을 수 없습니다.</p></div></div></div>;
 
   // Not logged in
@@ -153,10 +247,8 @@ export default function SurveyTake() {
       <div className="page active">
         <div className="card">
           <h2>{survey.title}</h2>
-          <p style={{ color: '#6b7280', marginBottom: 20 }}>{survey.description || ''}</p>
-          {survey.descriptionImages && survey.descriptionImages.length > 0 && (
-            <MediaDisplay mediaArr={survey.descriptionImages.map(img => ({ type: 'image', url: img.url, alt: '' }))} />
-          )}
+          {survey.titleEn && <div style={{ fontSize: 15, color: '#6b7280', marginTop: -8, marginBottom: 8 }}>{survey.titleEn}</div>}
+          <RichText text={survey.description} />
           <div className="login-required">
             <p>설문에 응답하려면 Microsoft 계정으로 로그인해야 합니다.</p>
             <button className="btn-ms-login" onClick={handleLoginAndRetry} style={{ fontSize: 15, padding: '10px 24px' }}>
@@ -174,12 +266,11 @@ export default function SurveyTake() {
 
   return (
     <div className="page active">
+      {lightbox && <ImageLightbox src={lightbox.src} alt={lightbox.alt} onClose={() => setLightbox(null)} />}
       <div className="card">
         <h2>{survey.title}</h2>
-        <p style={{ color: '#6b7280', marginBottom: 20 }}>{survey.description || ''}</p>
-        {descImages.length > 0 && (
-          <MediaDisplay mediaArr={descImages.map(img => ({ type: 'image', url: img.url, alt: '' }))} />
-        )}
+        {survey.titleEn && <div style={{ fontSize: 15, color: '#6b7280', marginTop: -8, marginBottom: 8 }}>{survey.titleEn}</div>}
+        <RichText text={survey.description} />
 
         <div style={{ marginBottom: 16 }}>
           <span className="respondent-tag">
@@ -189,46 +280,84 @@ export default function SurveyTake() {
 
         {questions.map((q, qi) => {
           const grp = q.group && groupMap[q.group];
+          const prevGrp = qi > 0 ? questions[qi - 1].group : null;
+          const showGroupDivider = grp && q.group !== prevGrp;
           return (
-            <div className="take-q" key={qi}>
+            <div key={qi}>
+              {showGroupDivider && (
+                <div className="take-group-divider" style={{ borderLeftColor: grp.color }}>
+                  <span className="take-group-divider-dot" style={{ background: grp.color }}></span>
+                  <span>{grp.name}</span>
+                </div>
+              )}
+              <div className="take-q">
               <div className="q-title">
                 {grp && <span className="q-group-badge" style={{ background: grp.color }}>{grp.name}</span>}
                 Q{qi + 1}. {q.title}
                 {q.required && <span className="required"> *</span>}
+                {q.titleEn && <div style={{ fontSize: 13, color: '#6b7280', fontWeight: 400, marginTop: 2 }}>{q.titleEn}</div>}
               </div>
-                <MediaDisplay mediaArr={q.media} />
+                <MediaDisplay mediaArr={(q.media || []).filter(m => m.optionIndex == null)} onLightbox={setLightbox} />
 
                 {q.type === 'radio' && (
                   <div className="radio-group">
-                    {q.options.map((o, oi) => (
-                      <label key={oi}>
-                        <input
-                          type="radio"
-                          name={`q_${qi}`}
-                          value={o}
-                          checked={answers[qi] === o}
-                          onChange={() => setAnswer(qi, o)}
-                        />
-                        <span>{o}</span>
-                      </label>
-                    ))}
+                    {q.options.map((o, oi) => {
+                      const optionMedia = (q.media || []).filter(m => m.optionIndex === oi && m.url);
+                      const oEn = (q.optionsEn || [])[oi];
+                      return (
+                        <label key={oi} className={optionMedia.length ? 'has-media' : ''}>
+                          <input
+                            type="radio"
+                            name={`q_${qi}`}
+                            value={o}
+                            checked={answers[qi] === o}
+                            onChange={() => setAnswer(qi, o)}
+                          />
+                          <div className="option-content">
+                            <span>{o}{oEn && <span style={{ color: '#6b7280', fontSize: 13, marginLeft: 6 }}>/ {oEn}</span>}</span>
+                            {optionMedia.length > 0 && (
+                              <div className="option-media">
+                                <ImageCarousel
+                                  images={optionMedia.map(m => ({ url: m.url, alt: m.alt || o, caption: m.caption || '' }))}
+                                  onImageClick={(img) => { setLightbox({ src: img.url, alt: img.alt }); }}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </label>
+                      );
+                    })}
                   </div>
                 )}
 
                 {q.type === 'checkbox' && (
                   <div className="check-group">
-                    {q.options.map((o, oi) => (
-                      <label key={oi}>
-                        <input
-                          type="checkbox"
-                          name={`q_${qi}`}
-                          value={o}
-                          checked={(answers[qi] || []).includes(o)}
-                          onChange={() => toggleCheckbox(qi, o)}
-                        />
-                        <span>{o}</span>
-                      </label>
-                    ))}
+                    {q.options.map((o, oi) => {
+                      const optionMedia = (q.media || []).filter(m => m.optionIndex === oi && m.url);
+                      const oEn = (q.optionsEn || [])[oi];
+                      return (
+                        <label key={oi} className={optionMedia.length ? 'has-media' : ''}>
+                          <input
+                            type="checkbox"
+                            name={`q_${qi}`}
+                            value={o}
+                            checked={(answers[qi] || []).includes(o)}
+                            onChange={() => toggleCheckbox(qi, o)}
+                          />
+                          <div className="option-content">
+                            <span>{o}{oEn && <span style={{ color: '#6b7280', fontSize: 13, marginLeft: 6 }}>/ {oEn}</span>}</span>
+                            {optionMedia.length > 0 && (
+                              <div className="option-media">
+                                <ImageCarousel
+                                  images={optionMedia.map(m => ({ url: m.url, alt: m.alt || o, caption: m.caption || '' }))}
+                                  onImageClick={(img) => { setLightbox({ src: img.url, alt: img.alt }); }}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </label>
+                      );
+                    })}
                   </div>
                 )}
 
@@ -249,8 +378,8 @@ export default function SurveyTake() {
                       ))}
                     </div>
                     <div className="scale-labels">
-                      <span>{q.labelMin}</span>
-                      <span>{q.labelMax}</span>
+                      <span>{q.labelMin}{q.labelMinEn && <span style={{ color: '#6b7280', fontSize: 12, marginLeft: 4 }}>/ {q.labelMinEn}</span>}</span>
+                      <span>{q.labelMax}{q.labelMaxEn && <span style={{ color: '#6b7280', fontSize: 12, marginLeft: 4 }}>/ {q.labelMaxEn}</span>}</span>
                     </div>
                   </>
                 )}
@@ -264,6 +393,7 @@ export default function SurveyTake() {
                     onChange={(e) => setAnswer(qi, e.target.value)}
                   />
                 )}
+              </div>
             </div>
           );
         })}

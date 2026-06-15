@@ -45,6 +45,30 @@ export function getYoutubeEmbedUrl(url) {
   return m ? 'https://www.youtube.com/embed/' + m[1] : null;
 }
 
+// Extract embed URL from SharePoint video link or <iframe> embed code
+export function getSharePointEmbedUrl(input) {
+  if (!input) return null;
+  // Case 1: user pasted <iframe ...> embed code → extract src
+  const iframeMatch = input.match(/<iframe[^>]+src="([^"]+)"/i);
+  if (iframeMatch) return iframeMatch[1];
+  // Case 2: embed.aspx URL (already embeddable)
+  if (input.includes('sharepoint.com') && input.includes('embed.aspx')) return input;
+  // Case 3: SharePoint sharing link (e.g. https://xxx.sharepoint.com/:v:/s/site/EaBcDef...)
+  // Append action=embedview to make it embeddable in iframe
+  if (input.includes('sharepoint.com') && /\/:v:\//.test(input)) {
+    const sep = input.includes('?') ? '&' : '?';
+    return input + sep + 'action=embedview';
+  }
+  return null;
+}
+
+// Sanitize video URL input: extract src from <iframe> tags
+export function sanitizeVideoUrl(raw) {
+  if (!raw) return raw;
+  const m = raw.match(/<iframe[^>]+src="([^"]+)"/i);
+  return m ? m[1] : raw;
+}
+
 export function groupQuestions(qs, groups) {
   if (!groups || !groups.length) return [{ group: null, questions: qs.map((q, i) => ({ q, qi: i })) }];
   const groupMap = {};

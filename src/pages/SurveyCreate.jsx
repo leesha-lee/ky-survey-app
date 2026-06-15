@@ -2,13 +2,13 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { loadData, saveData } from '../lib/db';
-import { restoreBlobs, saveSurveyData, deleteSurveyBlobs, extractDescBlobs, restoreDescBlobs, deleteDescBlobs } from '../lib/blob';
-import { uid, esc, formatFileSize, getYoutubeEmbedUrl } from '../lib/utils';
-import { idbPut } from '../lib/db';
+import { restoreBlobs, saveSurveyData, deleteSurveyBlobs } from '../lib/blob';
+import { uid, esc, formatFileSize, getYoutubeEmbedUrl, getSharePointEmbedUrl, sanitizeVideoUrl } from '../lib/utils';
 import { fetchADDepartments, getMainDepartments } from '../lib/adDepartments';
+
 import { CATEGORIES } from '../config/categories';
 
-const GROUP_COLORS = ['#4361ee', '#2ec4b6', '#e63946', '#ffd166', '#06d6a0', '#8338ec', '#fb5607', '#118ab2', '#3a86a7', '#ff006e'];
+const GROUP_COLORS = ['#4361ee', '#2563eb', '#0ea5e9', '#06b6d4', '#0891b2', '#3b82f6', '#6366f1', '#118ab2', '#1d4ed8', '#0284c7'];
 const TYPE_LABELS = { radio: '객관식 (단일)', checkbox: '객관식 (복수)', scale: '척도', text: '주관식' };
 
 function MsIcon({ size = 14 }) {
@@ -23,8 +23,16 @@ function MsIcon({ size = 14 }) {
 }
 
 function MediaPreview({ m }) {
-  if (!m.url || m.url.startsWith('idb://')) return null;
+  if (!m.url || m.url.startsWith('fs://') || m.url.startsWith('idb://')) return null;
   if (m.type === 'image') {
+    const spEmbed = getSharePointEmbedUrl(m.url);
+    if (spEmbed) {
+      return (
+        <div className="media-preview">
+          <iframe src={spEmbed} allowFullScreen style={{ maxHeight: 250 }}></iframe>
+        </div>
+      );
+    }
     return (
       <div className="media-preview">
         <img src={m.url} alt={m.alt || ''} onError={e => { e.target.style.display = 'none'; }} />
@@ -32,6 +40,14 @@ function MediaPreview({ m }) {
     );
   }
   if (m.type === 'video') {
+    const spEmbed = getSharePointEmbedUrl(m.url);
+    if (spEmbed) {
+      return (
+        <div className="media-preview">
+          <iframe src={spEmbed} allowFullScreen style={{ maxHeight: 250 }}></iframe>
+        </div>
+      );
+    }
     return (
       <div className="media-preview">
         <video src={m.url} controls style={{ maxHeight: 200 }}></video>
@@ -66,22 +82,23 @@ export default function SurveyCreate() {
   const { currentUser } = useAuth();
 
   const [title, setTitle] = useState('');
+  const [titleEn, setTitleEn] = useState('');
   const [category, setCategory] = useState('');
   const [description, setDescription] = useState('');
   const [questions, setQuestions] = useState([]);
   const [questionGroups, setQuestionGroups] = useState([]);
   const [newGroupName, setNewGroupName] = useState('');
-  const [descImages, setDescImages] = useState([]);
 
   // Load survey for editing
   useEffect(() => {
     if (!editId) {
+      // Reset form for create mode
       setTitle('');
+      setTitleEn('');
       setCategory('');
       setDescription('');
       setQuestions([]);
       setQuestionGroups([]);
-      setDescImages([]);
       return;
     }
     async function load() {
@@ -89,17 +106,12 @@ export default function SurveyCreate() {
       const s = data.surveys.find(x => x.id === editId);
       if (!s) return;
       setTitle(s.title);
+      setTitleEn(s.titleEn || '');
       setCategory(s.category || '');
       setDescription(s.description || '');
       const restored = await restoreBlobs(s.questions);
       setQuestions(restored);
       setQuestionGroups(s.questionGroups ? JSON.parse(JSON.stringify(s.questionGroups)) : []);
-      if (s.descriptionImages) {
-        const restoredDesc = await restoreDescBlobs(s.descriptionImages);
-        setDescImages(restoredDesc);
-      } else {
-        setDescImages([]);
-      }
     }
     load();
   }, [editId]);
@@ -126,9 +138,9 @@ export default function SurveyCreate() {
   };
 
   const addQuestion = (type) => {
-    const q = { id: uid(), type, title: '', required: true, options: [], media: [], group: '' };
-    if (type === 'radio' || type === 'checkbox') q.options = ['옵션 1', '옵션 2'];
-    if (type === 'scale') { q.scaleMin = 1; q.scaleMax = 5; q.labelMin = '매우 불만족'; q.labelMax = '매우 만족'; }
+    const q = { id: uid(), type, title: '', titleEn: '', required: true, options: [], optionsEn: [], media: [], group: '' };
+    if (type === 'radio' || type === 'checkbox') { q.options = ['옵션 1', '옵션 2']; q.optionsEn = ['', '']; }
+    if (type === 'scale') { q.scaleMin = 1; q.scaleMax = 5; q.labelMin = '매우 불만족'; q.labelMax = '매우 만족'; q.labelMinEn = ''; q.labelMaxEn = ''; }
     setQuestions(prev => [...prev, q]);
   };
 
@@ -136,15 +148,25 @@ export default function SurveyCreate() {
     setQuestions(prev => prev.filter((_, i) => i !== qi));
   };
 
+  const moveQuestion = (qi, dir) => {
+    setQuestions(prev => {
+      const arr = [...prev];
+      const target = qi + dir;
+      if (target < 0 || target >= arr.length) return prev;
+      [arr[qi], arr[target]] = [arr[target], arr[qi]];
+      return arr;
+    });
+  };
+
   const addOption = (qi) => {
     setQuestions(prev => prev.map((q, i) =>
-      i === qi ? { ...q, options: [...q.options, '옵션 ' + (q.options.length + 1)] } : q
+      i === qi ? { ...q, options: [...q.options, '옵션 ' + (q.options.length + 1)], optionsEn: [...(q.optionsEn || []), ''] } : q
     ));
   };
 
   const removeOption = (qi, oi) => {
     setQuestions(prev => prev.map((q, i) =>
-      i === qi ? { ...q, options: q.options.filter((_, j) => j !== oi) } : q
+      i === qi ? { ...q, options: q.options.filter((_, j) => j !== oi), optionsEn: (q.optionsEn || []).filter((_, j) => j !== oi) } : q
     ));
   };
 
@@ -152,6 +174,16 @@ export default function SurveyCreate() {
     setQuestions(prev => prev.map((q, i) =>
       i === qi ? { ...q, options: q.options.map((o, j) => j === oi ? value : o) } : q
     ));
+  };
+
+  const updateOptionEn = (qi, oi, value) => {
+    setQuestions(prev => prev.map((q, i) => {
+      if (i !== qi) return q;
+      const arr = [...(q.optionsEn || [])];
+      while (arr.length < q.options.length) arr.push('');
+      arr[oi] = value;
+      return { ...q, optionsEn: arr };
+    }));
   };
 
   const addMedia = (qi, type) => {
@@ -177,7 +209,6 @@ export default function SurveyCreate() {
     const maxSize = 50 * 1024 * 1024;
     if (file.size > maxSize) { alert('파일 크기가 50MB를 초과합니다.'); return; }
     if (m.type === 'image' && !file.type.startsWith('image/')) { alert('이미지 파일만 업로드 가능합니다.'); return; }
-    if (m.type === 'video' && !file.type.startsWith('video/')) { alert('동영상 파일만 업로드 가능합니다.'); return; }
     const reader = new FileReader();
     reader.onload = (e) => {
       updateMedia(qi, mi, {
@@ -190,6 +221,32 @@ export default function SurveyCreate() {
     reader.readAsDataURL(file);
   };
 
+  const addMultipleImages = (qi, files) => {
+    const maxSize = 50 * 1024 * 1024;
+    const imageFiles = Array.from(files).filter(f => {
+      if (!f.type.startsWith('image/')) return false;
+      if (f.size > maxSize) { alert(`${f.name}: 파일 크기가 50MB를 초과합니다.`); return false; }
+      return true;
+    });
+    if (!imageFiles.length) return;
+    const newMedia = imageFiles.map(f => ({ type: 'image', url: '', label: '', alt: '', source: 'file', fileName: f.name, fileSize: formatFileSize(f.size) }));
+    setQuestions(prev => prev.map((q, i) => i === qi ? { ...q, media: [...(q.media || []), ...newMedia] } : q));
+    const baseIndex = (questions[qi].media || []).length;
+    imageFiles.forEach((f, fi) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setQuestions(prev => prev.map((q, i) => {
+          if (i !== qi) return q;
+          const media = [...q.media];
+          const mi = baseIndex + fi;
+          if (media[mi]) media[mi] = { ...media[mi], url: e.target.result };
+          return { ...q, media };
+        }));
+      };
+      reader.readAsDataURL(f);
+    });
+  };
+
   const handleFileSelect = (e, qi, mi) => {
     const f = e.target.files[0];
     if (f) processFile(f, qi, mi);
@@ -199,22 +256,6 @@ export default function SurveyCreate() {
     e.preventDefault();
     const f = e.dataTransfer.files[0];
     if (f) processFile(f, qi, mi);
-  };
-
-  const addDescImages = (files) => {
-    Array.from(files).forEach(file => {
-      if (!file.type.startsWith('image/')) return;
-      if (file.size > 50 * 1024 * 1024) { alert(`${file.name}: 50MB 초과`); return; }
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setDescImages(prev => [...prev, { url: e.target.result, fileName: file.name, fileSize: formatFileSize(file.size) }]);
-      };
-      reader.readAsDataURL(file);
-    });
-  };
-
-  const removeDescImage = (idx) => {
-    setDescImages(prev => prev.filter((_, i) => i !== idx));
   };
 
   const addDeptQuestion = async () => {
@@ -259,6 +300,8 @@ export default function SurveyCreate() {
     }
   };
 
+  const [saving, setSaving] = useState(false);
+
   const saveSurvey = async () => {
     if (!title.trim()) return alert('설문 제목을 입력하세요.');
     if (!category) return alert('카테고리를 선택하세요.');
@@ -267,46 +310,49 @@ export default function SurveyCreate() {
       if (!questions[i].title.trim()) return alert(`Q${i + 1}의 질문을 입력하세요.`);
     }
 
-    const data = await loadData();
-    const cleaned = await saveSurveyData(data, questions);
-    const { cleaned: cleanedDescImgs, blobs: descBlobs } = extractDescBlobs(descImages);
-    for (const [key, val] of Object.entries(descBlobs)) {
-      await idbPut('blobs', key, val);
-    }
+    setSaving(true);
+    try {
+      const data = await loadData();
+      const cleaned = await saveSurveyData(data, questions);
 
-    if (editId) {
-      const idx = data.surveys.findIndex(s => s.id === editId);
-      if (idx >= 0) {
-        await deleteSurveyBlobs(data.surveys[idx].questions);
-        await deleteDescBlobs(data.surveys[idx].descriptionImages);
-        data.surveys[idx].title = title.trim();
-        data.surveys[idx].category = category;
-        data.surveys[idx].description = description.trim();
-        data.surveys[idx].descriptionImages = cleanedDescImgs;
-        data.surveys[idx].questions = cleaned;
-        data.surveys[idx].questionGroups = JSON.parse(JSON.stringify(questionGroups));
+      if (editId) {
+        const idx = data.surveys.findIndex(s => s.id === editId);
+        if (idx >= 0) {
+          await deleteSurveyBlobs(data.surveys[idx].questions);
+          data.surveys[idx].title = title.trim();
+          data.surveys[idx].titleEn = titleEn.trim();
+          data.surveys[idx].category = category;
+          data.surveys[idx].description = description.trim();
+          data.surveys[idx].questions = cleaned;
+          data.surveys[idx].questionGroups = JSON.parse(JSON.stringify(questionGroups));
+        }
+      } else {
+        data.surveys.push({
+          id: uid(),
+          title: title.trim(),
+          titleEn: titleEn.trim(),
+          category,
+          description: description.trim(),
+          questions: cleaned,
+          questionGroups: JSON.parse(JSON.stringify(questionGroups)),
+          createdAt: new Date().toLocaleDateString('ko-KR'),
+          closed: false,
+        });
       }
-    } else {
-      data.surveys.push({
-        id: uid(),
-        title: title.trim(),
-        category,
-        description: description.trim(),
-        descriptionImages: cleanedDescImgs,
-        questions: cleaned,
-        questionGroups: JSON.parse(JSON.stringify(questionGroups)),
-        createdAt: new Date().toLocaleDateString('ko-KR'),
-        closed: false,
-      });
+      await saveData(data);
+      navigate('/');
+    } catch (e) {
+      console.error('설문 저장 실패:', e);
+      alert('설문 저장에 실패했습니다.\n' + (e.message || String(e)));
+    } finally {
+      setSaving(false);
     }
-    await saveData(data);
-    navigate('/');
   };
 
   const renderMediaItem = (qi, m, mi) => {
     const source = m.source || 'url';
-    const isFile = m.type === 'image' || m.type === 'video';
-    const hasFile = m.fileName && m.url && (m.url.startsWith('data:') || m.url.startsWith('idb://'));
+    const isFile = m.type === 'image';
+    const hasFile = m.fileName && m.url && (m.url.startsWith('data:') || m.url.startsWith('fs://') || m.url.startsWith('idb://'));
 
     return (
       <div key={mi}>
@@ -350,10 +396,17 @@ export default function SurveyCreate() {
             ) : isFile && source === 'url' ? (
               <>
                 <input
-                  type="url"
+                  type="text"
                   value={!hasFile ? (m.url || '') : ''}
-                  onChange={(e) => updateMedia(qi, mi, { url: e.target.value, fileName: '' })}
-                  placeholder={m.type === 'image' ? '이미지 URL' : '동영상 URL'}
+                  onChange={(e) => updateMedia(qi, mi, { url: sanitizeVideoUrl(e.target.value), fileName: '' })}
+                  onPaste={(e) => {
+                    const text = e.clipboardData.getData('text');
+                    if (text.includes('<iframe')) {
+                      e.preventDefault();
+                      updateMedia(qi, mi, { url: sanitizeVideoUrl(text), fileName: '' });
+                    }
+                  }}
+                  placeholder="이미지 URL 또는 SharePoint <iframe> 임베드 코드 붙여넣기"
                 />
                 {m.type === 'image' && (
                   <input
@@ -365,6 +418,20 @@ export default function SurveyCreate() {
                   />
                 )}
               </>
+            ) : m.type === 'video' ? (
+              <input
+                type="text"
+                value={m.url || ''}
+                onChange={(e) => updateMedia(qi, mi, { url: sanitizeVideoUrl(e.target.value), fileName: '' })}
+                onPaste={(e) => {
+                  const text = e.clipboardData.getData('text');
+                  if (text.includes('<iframe')) {
+                    e.preventDefault();
+                    updateMedia(qi, mi, { url: sanitizeVideoUrl(text), fileName: '' });
+                  }
+                }}
+                placeholder="동영상 URL 또는 SharePoint <iframe> 임베드 코드 붙여넣기"
+              />
             ) : m.type === 'youtube' ? (
               <input
                 type="url"
@@ -392,7 +459,26 @@ export default function SurveyCreate() {
           </div>
           <button className="btn btn-danger btn-sm" onClick={() => removeMedia(qi, mi)}>&times;</button>
         </div>
-        {m.url && !m.url.startsWith('idb://') && <MediaPreview m={m} />}
+        <input
+          type="text"
+          className="media-caption-input"
+          value={m.caption || ''}
+          onChange={(e) => updateMedia(qi, mi, { caption: e.target.value })}
+          placeholder="미디어 설명 (선택)"
+        />
+        {m.type === 'image' && (questions[qi].type === 'radio' || questions[qi].type === 'checkbox') && (
+          <select
+            className="media-option-match"
+            value={m.optionIndex != null ? m.optionIndex : ''}
+            onChange={(e) => updateMedia(qi, mi, { optionIndex: e.target.value === '' ? null : Number(e.target.value) })}
+          >
+            <option value="">선택지 매칭 없음</option>
+            {(questions[qi].options || []).map((o, oi) => (
+              <option key={oi} value={oi}>{o}</option>
+            ))}
+          </select>
+        )}
+        {m.url && !m.url.startsWith('fs://') && !m.url.startsWith('idb://') && <MediaPreview m={m} />}
       </div>
     );
   };
@@ -408,7 +494,11 @@ export default function SurveyCreate() {
             <span className="q-group-badge" style={{ background: grp.color }}>{grp.name}</span>
           )}
         </div>
-        <button className="q-remove" onClick={() => removeQuestion(qi)}>&times;</button>
+        <div className="q-actions">
+          <button className="q-move" onClick={() => moveQuestion(qi, -1)} disabled={qi === 0} title="위로 이동">&#9650;</button>
+          <button className="q-move" onClick={() => moveQuestion(qi, 1)} disabled={qi === questions.length - 1} title="아래로 이동">&#9660;</button>
+          <button className="q-remove" onClick={() => removeQuestion(qi)}>&times;</button>
+        </div>
 
         {questionGroups.length > 0 && (
           <select
@@ -430,6 +520,13 @@ export default function SurveyCreate() {
           onChange={(e) => updateQuestion(qi, { title: e.target.value })}
           placeholder="질문을 입력하세요"
         />
+        <input
+          type="text"
+          value={q.titleEn || ''}
+          onChange={(e) => updateQuestion(qi, { titleEn: e.target.value })}
+          placeholder="Question title in English (optional)"
+          style={{ marginTop: -6, fontSize: 13, color: '#6b7280' }}
+        />
         <label style={{ fontWeight: 400 }}>
           <input
             type="checkbox"
@@ -444,22 +541,25 @@ export default function SurveyCreate() {
         {(q.type === 'radio' || q.type === 'checkbox') && (
           <>
             {q.options.map((o, oi) => (
-              <div className="option-row" key={oi}>
+              <div className="option-row" key={oi} style={{ flexWrap: 'wrap' }}>
                 <input
                   type="text"
                   value={o}
                   onChange={(e) => updateOption(qi, oi, e.target.value)}
                   placeholder="옵션"
+                  style={{ flex: 1, minWidth: 120 }}
+                />
+                <input
+                  type="text"
+                  value={(q.optionsEn || [])[oi] || ''}
+                  onChange={(e) => updateOptionEn(qi, oi, e.target.value)}
+                  placeholder="English (optional)"
+                  style={{ flex: 1, minWidth: 120, fontSize: 13, color: '#6b7280' }}
                 />
                 <button className="btn btn-danger btn-sm" onClick={() => removeOption(qi, oi)}>&times;</button>
               </div>
             ))}
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-              <button className="add-option-btn" onClick={() => addOption(qi)}>+ 옵션 추가</button>
-              <button className="btn-ad" style={{ fontSize: 11, padding: '4px 10px' }} onClick={() => loadADOptionsToQuestion(qi)}>
-                <MsIcon size={12} />AD 부서 불러오기
-              </button>
-            </div>
+            <button className="add-option-btn" onClick={() => addOption(qi)}>+ 옵션 추가</button>
           </>
         )}
 
@@ -477,10 +577,12 @@ export default function SurveyCreate() {
             <div>
               <label>최소 라벨</label>
               <input type="text" value={q.labelMin} onChange={(e) => updateQuestion(qi, { labelMin: e.target.value })} />
+              <input type="text" value={q.labelMinEn || ''} onChange={(e) => updateQuestion(qi, { labelMinEn: e.target.value })} placeholder="English (optional)" style={{ marginTop: -6, fontSize: 13, color: '#6b7280' }} />
             </div>
             <div>
               <label>최대 라벨</label>
               <input type="text" value={q.labelMax} onChange={(e) => updateQuestion(qi, { labelMax: e.target.value })} />
+              <input type="text" value={q.labelMaxEn || ''} onChange={(e) => updateQuestion(qi, { labelMaxEn: e.target.value })} placeholder="English (optional)" style={{ marginTop: -6, fontSize: 13, color: '#6b7280' }} />
             </div>
           </div>
         )}
@@ -494,8 +596,12 @@ export default function SurveyCreate() {
           </summary>
           <div className="media-body">
             {(q.media || []).map((m, mi) => renderMediaItem(qi, m, mi))}
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 6, alignItems: 'center' }}>
               <button className="btn btn-outline btn-sm" onClick={() => addMedia(qi, 'image')}>+ 이미지</button>
+              <label className="btn btn-outline btn-sm" style={{ cursor: 'pointer', margin: 0 }}>
+                + 이미지 다중 업로드
+                <input type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={(e) => { addMultipleImages(qi, e.target.files); e.target.value = ''; }} />
+              </label>
               <button className="btn btn-outline btn-sm" onClick={() => addMedia(qi, 'video')}>+ 동영상</button>
               <button className="btn btn-outline btn-sm" onClick={() => addMedia(qi, 'youtube')}>+ YouTube</button>
               <button className="btn btn-outline btn-sm" onClick={() => addMedia(qi, 'link')}>+ URL 링크</button>
@@ -512,6 +618,7 @@ export default function SurveyCreate() {
         <h2>{editId ? '설문 수정' : '새 설문 만들기'}</h2>
         <label>설문 제목 *</label>
         <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="예: 고객 만족도 조사" />
+        <input type="text" value={titleEn} onChange={(e) => setTitleEn(e.target.value)} placeholder="Survey title in English (optional)" style={{ marginTop: -6, fontSize: 13, color: '#6b7280' }} />
         <label>카테고리 *</label>
         <select value={category} onChange={(e) => setCategory(e.target.value)}>
           <option value="">-- 카테고리 선택 --</option>
@@ -521,35 +628,6 @@ export default function SurveyCreate() {
         </select>
         <label>설문 설명</label>
         <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="설문에 대한 간단한 설명을 입력하세요" />
-
-        <label>설명 이미지 {descImages.length > 0 && <span style={{ color: '#2ec4b6', fontWeight: 400 }}>({descImages.length}개)</span>}</label>
-        {descImages.length > 0 && (
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
-            {descImages.map((img, idx) => (
-              <div key={idx} style={{ position: 'relative', border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden', width: 140 }}>
-                <img src={img.url} alt="" style={{ width: '100%', height: 100, objectFit: 'cover', display: 'block' }} />
-                <div style={{ padding: '4px 6px', fontSize: 11, color: '#6b7280', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {img.fileName}
-                </div>
-                <button
-                  onClick={() => removeDescImage(idx)}
-                  style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(0,0,0,0.5)', color: '#fff', border: 'none', borderRadius: '50%', width: 22, height: 22, cursor: 'pointer', fontSize: 14, lineHeight: '20px', textAlign: 'center' }}
-                >&times;</button>
-              </div>
-            ))}
-          </div>
-        )}
-        <div
-          className="upload-zone"
-          onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add('dragover'); }}
-          onDragLeave={(e) => { e.currentTarget.classList.remove('dragover'); }}
-          onDrop={(e) => { e.preventDefault(); e.currentTarget.classList.remove('dragover'); addDescImages(e.dataTransfer.files); }}
-        >
-          <div className="upload-icon">&#x1F4F7;</div>
-          <div className="upload-text"><strong>클릭</strong>하거나 파일을 <strong>드래그</strong>하세요</div>
-          <div className="upload-text">JPG, PNG, GIF, SVG, WebP (최대 50MB, 여러 장 선택 가능)</div>
-          <input type="file" accept="image/*" multiple onChange={(e) => { addDescImages(e.target.files); e.target.value = ''; }} />
-        </div>
       </div>
 
       <div className="card">
@@ -591,16 +669,13 @@ export default function SurveyCreate() {
         </div>
 
         {/* Question Builder */}
-        <div className="flex-between">
-          <h3>질문 목록</h3>
+        <div className="sticky-toolbar">
+          <h3 style={{ margin: 0 }}>질문 목록</h3>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button className="btn btn-outline btn-sm" onClick={() => addQuestion('radio')}>객관식 (단일)</button>
             <button className="btn btn-outline btn-sm" onClick={() => addQuestion('checkbox')}>객관식 (복수)</button>
             <button className="btn btn-outline btn-sm" onClick={() => addQuestion('scale')}>척도</button>
             <button className="btn btn-outline btn-sm" onClick={() => addQuestion('text')}>주관식</button>
-            <button className="btn-ad" onClick={addDeptQuestion} title="Azure AD 부서 목록을 옵션으로 불러옵니다">
-              <MsIcon />AD 부서 질문
-            </button>
           </div>
         </div>
 
@@ -612,9 +687,9 @@ export default function SurveyCreate() {
         )}
       </div>
 
-      <div style={{ textAlign: 'right', marginBottom: 40 }}>
-        <button className="btn btn-secondary" onClick={() => navigate('/')} style={{ marginRight: 8 }}>취소</button>
-        <button className="btn btn-success" onClick={saveSurvey}>설문 저장</button>
+      <div className="sticky-bottom-bar">
+        <button className="btn btn-secondary" onClick={() => navigate('/')}>취소</button>
+        <button className="btn btn-success" onClick={saveSurvey} disabled={saving}>{saving ? '저장 중...' : '설문 저장'}</button>
       </div>
     </div>
   );
