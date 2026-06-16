@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDB } from '../hooks/useDB';
 import { useAuth } from '../hooks/useAuth';
-import { loadData, saveData, idbPut, idbGet, idbDelete } from '../lib/db';
+import { loadData, saveData, idbPut, idbGet, idbDelete, exportAllData } from '../lib/db';
 import { deleteSurveyBlobs, compressImage } from '../lib/blob';
 import { uid } from '../lib/utils';
 import CategoryFilter from '../components/CategoryFilter';
@@ -354,6 +354,31 @@ export default function SurveyList() {
     await refresh();
   }, [refresh]);
 
+  const [exporting, setExporting] = useState(false);
+
+  const handleExport = useCallback(async () => {
+    setExporting(true);
+    try {
+      const exported = await exportAllData();
+      const json = JSON.stringify(exported, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `ky-survey-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      alert('내보내기가 완료되었습니다.\n새 서버(smtux)에서 "가져오기" 버튼으로 이 파일을 업로드하세요.');
+    } catch (e) {
+      console.error('Export failed', e);
+      alert('내보내기 중 오류가 발생했습니다: ' + (e.message || e));
+    } finally {
+      setExporting(false);
+    }
+  }, []);
+
   const admin = isAdmin(currentUser);
   const surveys = data.surveys || [];
   const allNotices = data.notices || [];
@@ -409,6 +434,13 @@ export default function SurveyList() {
         <div className="flex-between">
           <h2>설문 목록</h2>
           <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              className="btn btn-outline"
+              onClick={handleExport}
+              disabled={exporting}
+            >
+              {exporting ? '내보내는 중...' : '📦 내보내기'}
+            </button>
             {admin && !showForm && (
               <button className="btn btn-success" onClick={() => { setEditingNotice(null); setShowForm(true); }}>
                 📢 공지 등록

@@ -1,5 +1,5 @@
 import { db } from './firebase';
-import { doc, getDoc, getDocFromServer, setDoc, deleteDoc } from 'firebase/firestore';
+import { doc, getDoc, getDocFromServer, setDoc, deleteDoc, collection, getDocs } from 'firebase/firestore';
 
 const APP_DOC = doc(db, 'appData', 'main');
 
@@ -36,4 +36,12 @@ export async function idbPut(store, key, value) {
 export async function idbDelete(store, key) {
   const ref = doc(db, 'blobs', key);
   await deleteDoc(ref);
+}
+
+export async function exportAllData() {
+  const appdata = await loadData();
+  const blobsSnap = await getDocs(collection(db, 'blobs'));
+  const blobs = {};
+  blobsSnap.forEach(d => { blobs[d.id] = d.data().value; });
+  return { appdata, blobs };
 }
